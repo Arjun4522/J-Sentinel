@@ -1,6 +1,6 @@
-package com.example.apigateway.controller;
+package com.example.api_gateway.controller;
 
-import com.example.apigateway.service.GraphStorageService;
+import com.example.api_gateway.service.GraphStorageService;
 import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,6 @@ public class GraphController {
         this.graphStorageService = graphStorageService;
     }
 
-    // Endpoint for scanner.java to upload the code graph/AST
     @PostMapping("/scan")
     public Mono<ResponseEntity<String>> uploadGraph(@RequestBody String codeGraphJson) {
         try {
@@ -31,7 +30,6 @@ public class GraphController {
         }
     }
 
-    // Endpoint for analyse.java to retrieve the code graph for taint analysis
     @GetMapping("/graph")
     public Mono<ResponseEntity<String>> getGraph(@RequestParam String scanId) {
         JSONObject graph = graphStorageService.getGraph(scanId);
@@ -42,7 +40,6 @@ public class GraphController {
         return Mono.just(ResponseEntity.ok(graph.toString()));
     }
 
-    // Endpoint to retrieve the CFG (Control Flow Graph)
     @GetMapping("/cfg")
     public Mono<ResponseEntity<String>> getCFG(@RequestParam String scanId) {
         JSONObject cfg = graphStorageService.getCFG(scanId);
@@ -53,7 +50,6 @@ public class GraphController {
         return Mono.just(ResponseEntity.ok(cfg.toString()));
     }
 
-    // Endpoint to retrieve the DFG (Data Flow Graph)
     @GetMapping("/dfg")
     public Mono<ResponseEntity<String>> getDFG(@RequestParam String scanId) {
         JSONObject dfg = graphStorageService.getDFG(scanId);
@@ -64,7 +60,6 @@ public class GraphController {
         return Mono.just(ResponseEntity.ok(dfg.toString()));
     }
 
-    // Endpoint to retrieve the AST (Abstract Syntax Tree)
     @GetMapping("/ast")
     public Mono<ResponseEntity<String>> getAST(@RequestParam String scanId) {
         JSONObject ast = graphStorageService.getAST(scanId);
