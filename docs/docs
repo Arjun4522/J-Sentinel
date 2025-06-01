@@ -1,0 +1,21 @@
+CLASSPATH=".:/home/arjun/Desktop/J-Sentinel:/home/arjun/.m2/repository/com/github/javaparser/javaparser-core/3.26.2/javaparser-core-3.26.2.jar:/home/arjun/.m2/repository/org/json/json/20240303/json-20240303.jar:/home/arjun/.m2/repository/org/jgrapht/jgrapht-core/1.5.2/jgrapht-core-1.5.2.jar:/home/arjun/.m2/repository/org/jheaps/jheaps/0.14/jheaps-0.14.jar:/home/arjun/.m2/repository/org/apfloat/apfloat/1.10.1/apfloat-1.10.1.jar"
+
+export API_USER=user
+export API_PASSWORD=secret
+
+
+mkdir -p /tmp/j-sentinel/uploads /tmp/j-sentinel/outputs
+
+chmod -R 777 /tmp/j-sentinel
+
+javac -cp "$CLASSPATH" scanner_test.java 
+javac -cp "$CLASSPATH" analysis_test.java
+
+
+java -cp "$CLASSPATH" scanner_test test/ --endpoint http://localhost:8080/api/scan
+
+curl -u user:secret http://localhost:8080/api/graph?scanId=<scan-ID>
+
+java -cp "$CLASSPATH" analyse_test --api --endpoint http://localhost:8080/api/graph --scanId <scan-Id> --output taint_analysis_api.json
+
+

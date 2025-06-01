@@ -7,7 +7,7 @@ public class SimpleTest {
     private static final Logger logger = Logger.getLogger(SimpleTest.class.getName());
 
     public void run(String userInput) {
-        logger.info("Processing input: " + userInput); // Potential log injection
+        logger.info("Processing input: " + userInput);
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
             String line = reader.readLine();

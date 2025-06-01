@@ -1,12 +1,10 @@
 import com.github.javaparser.JavaParser;
-import com.github.javaparser.ParseResult;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.expr.AssignExpr;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.stmt.ExpressionStmt;
-import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.json.JSONArray;
@@ -21,12 +19,12 @@ import java.net.URL;
 import java.util.*;
 
 public class analyse_test {
-    private static String apiEndpoint = "http://localhost:8080/api/codegraph";
-    private static String inputPath = "codegraph.json";
+    private static String apiEndpoint = "http://localhost:8080/api/graph";
     private static String outputPath = "taint_analysis.json";
-    private static boolean useApi = false;
+    private static String scanId = "";
+    private static String apiUser = "user";
+    private static String apiPassword = "secret";
 
-    // Predefined sources and sinks for taint analysis
     private static final Set<String> TAINT_SOURCES = new HashSet<>(Arrays.asList(
         "getParameter", "readLine", "getInputStream", "nextLine", "read"
     ));
@@ -36,9 +34,13 @@ public class analyse_test {
 
     public static void main(String[] args) throws IOException {
         parseArguments(args);
+        if (scanId.isEmpty()) {
+            System.err.println("Error: --scanId is required");
+            return;
+        }
         JSONObject codeGraph = readCodeGraph();
         if (codeGraph == null) {
-            System.err.println("Error: Could not read code graph");
+            System.err.println("Error: Could not read code graph from API");
             return;
         }
         JSONArray taintedPaths = analyzeCodeGraph(codeGraph);
@@ -54,17 +56,9 @@ public class analyse_test {
     private static void parseArguments(String[] args) {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
-                case "--api":
-                    useApi = true;
-                    break;
                 case "--endpoint":
                     if (i + 1 < args.length) {
                         apiEndpoint = args[++i];
-                    }
-                    break;
-                case "--input":
-                    if (i + 1 < args.length) {
-                        inputPath = args[++i];
                     }
                     break;
                 case "--output":
@@ -72,27 +66,59 @@ public class analyse_test {
                         outputPath = args[++i];
                     }
                     break;
+                case "--scanId":
+                    if (i + 1 < args.length) {
+                        scanId = args[++i];
+                    }
+                    break;
+                case "--user":
+                    if (i + 1 < args.length) {
+                        apiUser = args[++i];
+                    }
+                    break;
+                case "--password":
+                    if (i + 1 < args.length) {
+                        apiPassword = args[++i];
+                    }
+                    break;
             }
         }
     }
 
     private static JSONObject readCodeGraph() throws IOException {
-        if (useApi) {
-            HttpURLConnection conn = (HttpURLConnection) new URL(apiEndpoint).openConnection();
+        String url = apiEndpoint + (apiEndpoint.contains("?") ? "&" : "?") + "scanId=" + scanId;
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
+
+            String auth = (System.getenv("API_USER") != null ? System.getenv("API_USER") : apiUser) + ":" +
+                          (System.getenv("API_PASSWORD") != null ? System.getenv("API_PASSWORD") : apiPassword);
+            String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+            conn.setRequestProperty("Authorization", "Basic " + encodedAuth);
+
             int responseCode = conn.getResponseCode();
             if (responseCode != 200) {
                 System.err.println("Failed to fetch code graph: HTTP " + responseCode);
+                try (java.io.InputStream errorStream = conn.getErrorStream()) {
+                    if (errorStream != null) {
+                        System.err.println("Error details: " + new String(errorStream.readAllBytes()));
+                    }
+                }
                 return null;
             }
             try (java.io.InputStream is = conn.getInputStream()) {
                 String jsonText = new String(is.readAllBytes());
                 return new JSONObject(jsonText);
             }
-        } else {
-            String jsonText = new String(Files.readAllBytes(Paths.get(inputPath)));
-            return new JSONObject(jsonText);
+        } catch (IOException e) {
+            System.err.println("Error fetching code graph from API: " + e.getMessage());
+            return null;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
     }
 
@@ -115,7 +141,6 @@ public class analyse_test {
         List<Integer> sinks = new ArrayList<>();
         Map<Integer, Set<Integer>> taintedVariables = new HashMap<>();
 
-        // Identify sources (method calls and parameters)
         for (JSONObject node : nodeMap.values()) {
             String type = node.getString("type");
             if (type.equals("METHOD_CALL") && TAINT_SOURCES.contains(node.getString("name"))) {
@@ -127,13 +152,10 @@ public class analyse_test {
             }
         }
 
-        // Identify sinks and track tainted variables
         for (JSONObject node : nodeMap.values()) {
             if (node.getString("type").equals("METHOD_CALL") && SENSITIVE_SINKS.contains(node.getString("name"))) {
-                // Check if the sink's arguments are tainted
                 boolean isTainted = false;
                 if (node.has("arguments") && node.getInt("arguments") > 0) {
-                    // Check if the sink is within a method that uses tainted variables
                     for (Integer sourceId : sources) {
                         Set<Integer> reachableNodes = findReachableNodes(sourceId, dataFlowMap);
                         if (reachableNodes.contains(node.getInt("id"))) {
@@ -151,7 +173,6 @@ public class analyse_test {
             }
         }
 
-        // Track tainted variables through assignments
         for (JSONObject node : nodeMap.values()) {
             if (node.getString("type").equals("LOCAL_VARIABLE") && node.has("initializer")) {
                 String initializer = node.getString("initializer");
@@ -227,9 +248,7 @@ public class analyse_test {
                 type.equals("CONTAINS_CONTROL_FLOW") || 
                 type.equals("CONTAINS_EXPRESSION") || 
                 type.equals("DATA_FLOW")) {
-                
                 adjacencyMap.computeIfAbsent(source, k -> new HashSet<>()).add(target);
-                
                 if (type.equals("CONTAINS_EXPRESSION") || type.equals("INVOKES") || type.equals("DATA_FLOW")) {
                     adjacencyMap.computeIfAbsent(target, k -> new HashSet<>()).add(source);
                 }
@@ -242,7 +261,6 @@ public class analyse_test {
     private static Map<Integer, Set<Integer>> buildDataFlowMap(JSONArray edges, Map<Integer, JSONObject> nodeMap) {
         Map<Integer, Set<Integer>> dataFlowMap = new HashMap<>();
 
-        // Process DATA_FLOW edges
         for (int i = 0; i < edges.length(); i++) {
             JSONObject edge = edges.getJSONObject(i);
             if (edge.getString("type").equals("DATA_FLOW")) {
@@ -253,19 +271,16 @@ public class analyse_test {
             }
         }
 
-        // Add data flow for method calls passing tainted parameters
         for (Object obj : edges) {
             JSONObject edge = (JSONObject) obj;
             if (edge.getString("type").equals("INVOKES")) {
-                int source = edge.getInt("source"); // Method
-                int target = edge.getInt("target"); // Method call
+                int source = edge.getInt("source");
+                int target = edge.getInt("target");
                 JSONObject targetNode = nodeMap.get(target);
                 if (targetNode.getString("type").equals("METHOD_CALL")) {
                     String calledMethodName = targetNode.getString("name");
-                    // Find the method declaration for the called method
                     for (JSONObject node : nodeMap.values()) {
                         if (node.getString("type").equals("METHOD") && node.getString("name").equals(calledMethodName)) {
-                            // Assume parameters may be tainted
                             dataFlowMap.computeIfAbsent(source, k -> new HashSet<>()).add(node.getInt("id"));
                             dataFlowMap.computeIfAbsent(node.getInt("id"), k -> new HashSet<>()).add(source);
                         }
@@ -374,7 +389,6 @@ public class analyse_test {
     private static String determineSeverity(JSONObject sourceNode, JSONObject sinkNode, 
                                            Map<Integer, JSONObject> nodeMap, 
                                            Map<Integer, Set<Integer>> dataFlowMap) {
-        // Check if sink arguments are static strings
         boolean isStaticString = sinkNode.has("arguments") && sinkNode.getInt("arguments") == 1 &&
             nodeMap.values().stream().anyMatch(node -> 
                 node.getString("type").equals("STRING_LITERAL") && 
@@ -383,21 +397,23 @@ public class analyse_test {
         if (isStaticString) {
             return "LOW";
         }
-        // High severity for direct user input to sinks like println, info, warning
         if (SENSITIVE_SINKS.contains(sinkNode.getString("name")) && 
             (sourceNode.getString("type").equals("PARAMETER") || TAINT_SOURCES.contains(sourceNode.getString("name")))) {
             return "HIGH";
         }
-        // Medium severity for exception-related sinks
         if (sinkNode.getString("name").equals("severe") || sinkNode.getString("name").equals("error")) {
             return "MEDIUM";
         }
-        return "HIGH"; // Default to high for other cases
+        return "HIGH";
     }
 
     private static void saveResults(JSONObject result) throws IOException {
         try (java.io.FileWriter file = new java.io.FileWriter(outputPath)) {
             file.write(result.toString(2));
+            System.out.println("Successfully saved results to " + outputPath);
+        } catch (IOException e) {
+            System.err.println("Error saving results to " + outputPath + ": " + e.getMessage());
+            throw e;
         }
     }
 }
