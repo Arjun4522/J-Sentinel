@@ -85,8 +85,6 @@ Ensure you have the following installed:
    ```bash
    javac -cp "$CLASSPATH" scanner.java
    javac -cp "$CLASSPATH" analyse.java
-   javac -cp "$CLASSPATH" scanner_test.java
-   javac -cp "$CLASSPATH" analyse_test.java
    ```
 
 ## 🚀 Usage
@@ -114,8 +112,6 @@ java -cp "$CLASSPATH" scanner ./src/main/java/MyClass.java --local --output anal
 # Analyze and upload to API
 java -cp "$CLASSPATH" scanner_test test/ --endpoint http://localhost:8080/api/scan
 
-# Analyze with custom endpoint
-java -cp "$CLASSPATH" scanner ./MyApp.java --endpoint https://myapi.com/scan
 ```
 
 ### ⚡ Analyzer Usage
