@@ -15,7 +15,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class scanner_test {
+public class scanner {
 
     private static String apiEndpoint = "http://localhost:8080/api/scan";
     private static boolean saveLocal = false;

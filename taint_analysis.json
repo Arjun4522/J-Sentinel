@@ -1,5 +1,5 @@
 {
-  "scanId": "d180925f-5cf6-4ee2-be8b-dbdf27308846",
+  "scanId": "894d6da2-2012-43ca-a91d-72bafdb7b12d",
   "taintedPaths": [
     {
       "pathNodes": [
@@ -185,5 +185,5 @@
       "sinkName": "warning"
     }
   ],
-  "timestamp": 1748808209993
+  "timestamp": 1748810973644
 }
