@@ -3,24 +3,41 @@ CLASSPATH=".:/home/arjun/Desktop/J-Sentinel:/home/arjun/.m2/repository/com/githu
 export API_USER=user
 export API_PASSWORD=secret
 
-
 mkdir -p /tmp/j-sentinel/uploads /tmp/j-sentinel/outputs
 
 chmod -R 777 /tmp/j-sentinel
 
-javac -cp "lib/*" scanner_test.java 
-javac -cp "lib/*" analysis_test.java
+./mvnw spring-boot:run
+
+
+javac -cp "lib/*" scanner.java 
+javac -cp "lib/*" analysis.java
 javac -cp "lib/* cfg_extract.java
 javac -cp "lib/*" dfg_extract.java
 
 
-java -cp "lib/*:." scanner_test test/ --endpoint http://localhost:8080/api/scan
+java -cp "lib/*:." scanner test/ --endpoint http://localhost:8080/api/scan
 
 curl -u user:secret http://localhost:8080/api/graph?scanId=<scan-ID>
 
-java -cp "lib/*:." analyse_test --api --endpoint http://localhost:8080/api/graph --scanId <scan-ID> --output taint_analysis_api.json
+java -cp "lib/*:." analyse --api --endpoint http://localhost:8080/api/graph --scanId <scan-ID> --output output/taint_analysis.json
 
-java -cp "lib/*:." cfg_extract --scanId <scan-ID> -output cfg.json
-java -cp "lib/*:." dfg_extract --scanId <scan-ID> -output cfg.json
+java -cp "lib/*:." cfg_extract --scanId <scan-ID> -output output/cfg.json
+java -cp "lib/*:." dfg_extract --scanId <scan-ID> -output output/cfg.json
 
-curl -u user:secret "http://localhost:8080/api/graph?scanId=<scan-ID>" -o ast.json
+curl -u user:secret "http://localhost:8080/api/graph?scanId=<scan-ID>" -o output/ast.json
+
+curl -u user:secret http://localhost:8080/api/health
+
+curl -u user:secret http://localhost:8080/api/cfg_extract?scanId=<scanId>
+
+curl -u user:secret http://localhost:8080/api/dfg_extract?scanId=<scanId>
+
+curl -u user:secret http://localhost:8080/api/taint_analyse?scanId=<scanId>
+
+
+cd ~/Desktop/J-Sentinel
+./jsentinel.sh scan --input test/ --endpoint http://localhost:8080/api --user user --password secret --output output/scan.json
+./jsentinel.sh cfg --endpoint http://localhost:8080/api --user user --password secret --output output/cfg.json
+./jsentinel.sh dfg --endpoint http://localhost:8080/api --user user --password secret --output output/dfg.json
+./jsentinel.sh taint --endpoint http://localhost:8080/api --user user --password secret --output output/taint_analysis.json

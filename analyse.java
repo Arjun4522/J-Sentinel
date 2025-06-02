@@ -18,7 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
 
-public class analyse_test {
+public class analyse {
     private static String apiEndpoint = "http://localhost:8080/api/graph";
     private static String outputPath = "taint_analysis.json";
     private static String scanId = "";

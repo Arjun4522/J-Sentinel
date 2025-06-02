@@ -1060,7 +1060,7 @@
       "message": "Potential log injection: warning with variable content"
     }
   ],
-  "scanId": "ac141397-7d04-46e8-8e40-3265fe5222d2",
+  "scanId": "0ccab694-c850-41bd-9258-8711863472cf",
   "constructorNamingIssues": [],
   "edges": [
     {
@@ -2072,7 +2072,7 @@
       "message": "Sensitive data exposure: severe may leak exception details in catch block"
     }
   ],
-  "timestamp": 1748896197829,
+  "timestamp": 1748897012076,
   "overlyBroadCatches": [],
   "statistics": {
     "inefficientListOperations": 0,
