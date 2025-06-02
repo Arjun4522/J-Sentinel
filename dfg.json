@@ -1,0 +1,938 @@
+{
+  "nodes": [
+    {
+      "dataType": "String",
+      "name": "filePath",
+      "id": 4,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "BufferedReader",
+      "name": "reader",
+      "id": 5,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new BufferedReader(new FileReader(filePath))"
+    },
+    {
+      "dataType": "String",
+      "name": "line",
+      "id": 6,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "reader.readLine()"
+    },
+    {
+      "scope": "reader",
+      "name": "readLine",
+      "arguments": 0,
+      "id": 7,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "info",
+      "arguments": 1,
+      "id": 8,
+      "type": "METHOD_CALL"
+    },
+    {
+      "name": "writeToLogFile",
+      "arguments": 1,
+      "id": 9,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "severe",
+      "arguments": 1,
+      "id": 10,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "e",
+      "name": "getMessage",
+      "arguments": 0,
+      "id": 11,
+      "type": "METHOD_CALL"
+    },
+    {
+      "dataType": "String",
+      "name": "content",
+      "id": 21,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "PrintWriter",
+      "name": "writer",
+      "id": 22,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new PrintWriter(new FileWriter(\"output.log\", true))"
+    },
+    {
+      "scope": "writer",
+      "name": "println",
+      "arguments": 1,
+      "id": 23,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "warning",
+      "arguments": 1,
+      "id": 24,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "e",
+      "name": "getMessage",
+      "arguments": 0,
+      "id": 25,
+      "type": "METHOD_CALL"
+    },
+    {
+      "dataType": "String[]",
+      "name": "args",
+      "id": 34,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "FileReadTaintTest",
+      "name": "test",
+      "id": 35,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new FileReadTaintTest()"
+    },
+    {
+      "dataType": "String",
+      "name": "path",
+      "id": 36,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "args.length > 0 ? args[0] : \"input.txt\""
+    },
+    {
+      "scope": "test",
+      "name": "readAndProcess",
+      "arguments": 1,
+      "id": 37,
+      "type": "METHOD_CALL"
+    },
+    {
+      "field": "length",
+      "scope": "args",
+      "id": 39,
+      "type": "FIELD_ACCESS"
+    },
+    {
+      "dataType": "Logger",
+      "name": "logger",
+      "id": 41,
+      "type": "FIELD"
+    },
+    {
+      "dataType": "String",
+      "name": "userInput",
+      "id": 48,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "BufferedReader",
+      "name": "reader",
+      "id": 49,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new BufferedReader(new InputStreamReader(System.in))"
+    },
+    {
+      "dataType": "String",
+      "name": "line",
+      "id": 50,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "reader.readLine()"
+    },
+    {
+      "scope": "logger",
+      "name": "info",
+      "arguments": 1,
+      "id": 51,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "reader",
+      "name": "readLine",
+      "arguments": 0,
+      "id": 52,
+      "type": "METHOD_CALL"
+    },
+    {
+      "name": "process",
+      "arguments": 1,
+      "id": 53,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "severe",
+      "arguments": 1,
+      "id": 54,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "ex",
+      "name": "getMessage",
+      "arguments": 0,
+      "id": 55,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "info",
+      "arguments": 1,
+      "id": 56,
+      "type": "METHOD_CALL"
+    },
+    {
+      "field": "in",
+      "scope": "System",
+      "id": 61,
+      "type": "FIELD_ACCESS"
+    },
+    {
+      "dataType": "String",
+      "name": "input",
+      "id": 68,
+      "type": "PARAMETER"
+    },
+    {
+      "scope": "\"start\"",
+      "name": "equals",
+      "arguments": 1,
+      "id": 69,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "info",
+      "arguments": 1,
+      "id": 70,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "warning",
+      "arguments": 1,
+      "id": 71,
+      "type": "METHOD_CALL"
+    },
+    {
+      "dataType": "String[]",
+      "name": "args",
+      "id": 79,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "SimpleTest",
+      "name": "test",
+      "id": 80,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new SimpleTest()"
+    },
+    {
+      "scope": "test",
+      "name": "run",
+      "arguments": 1,
+      "id": 81,
+      "type": "METHOD_CALL"
+    },
+    {
+      "field": "length",
+      "scope": "args",
+      "id": 83,
+      "type": "FIELD_ACCESS"
+    },
+    {
+      "dataType": "Logger",
+      "name": "logger",
+      "id": 85,
+      "type": "FIELD"
+    },
+    {
+      "dataType": "String",
+      "name": "userInput",
+      "id": 92,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "String",
+      "name": "sanitized",
+      "id": 93,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "userInput.replaceAll(\"[^a-zA-Z0-9]\", \"\")"
+    },
+    {
+      "scope": "userInput",
+      "name": "isEmpty",
+      "arguments": 0,
+      "id": 94,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "info",
+      "arguments": 1,
+      "id": 95,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "userInput",
+      "name": "replaceAll",
+      "arguments": 2,
+      "id": 96,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "sanitized",
+      "name": "length",
+      "arguments": 0,
+      "id": 97,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "info",
+      "arguments": 1,
+      "id": 98,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "warning",
+      "arguments": 1,
+      "id": 99,
+      "type": "METHOD_CALL"
+    },
+    {
+      "dataType": "String[]",
+      "name": "args",
+      "id": 113,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "SafeInputTest",
+      "name": "test",
+      "id": 114,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new SafeInputTest()"
+    },
+    {
+      "dataType": "String",
+      "name": "input",
+      "id": 115,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "args.length > 0 ? args[0] : \"\""
+    },
+    {
+      "scope": "test",
+      "name": "processSafeInput",
+      "arguments": 1,
+      "id": 116,
+      "type": "METHOD_CALL"
+    },
+    {
+      "field": "length",
+      "scope": "args",
+      "id": 118,
+      "type": "FIELD_ACCESS"
+    },
+    {
+      "dataType": "Logger",
+      "name": "logger",
+      "id": 120,
+      "type": "FIELD"
+    },
+    {
+      "dataType": "String",
+      "name": "userData",
+      "id": 126,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "String",
+      "name": "processed",
+      "id": 127,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "transform(userData)"
+    },
+    {
+      "name": "transform",
+      "arguments": 1,
+      "id": 128,
+      "type": "METHOD_CALL"
+    },
+    {
+      "name": "logData",
+      "arguments": 1,
+      "id": 129,
+      "type": "METHOD_CALL"
+    },
+    {
+      "dataType": "String",
+      "name": "input",
+      "id": 131,
+      "type": "PARAMETER"
+    },
+    {
+      "scope": "input",
+      "name": "toUpperCase",
+      "arguments": 0,
+      "id": 132,
+      "type": "METHOD_CALL"
+    },
+    {
+      "dataType": "String",
+      "name": "data",
+      "id": 139,
+      "type": "PARAMETER"
+    },
+    {
+      "scope": "logger",
+      "name": "info",
+      "arguments": 1,
+      "id": 140,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "data",
+      "name": "length",
+      "arguments": 0,
+      "id": 141,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "warning",
+      "arguments": 1,
+      "id": 142,
+      "type": "METHOD_CALL"
+    },
+    {
+      "dataType": "String[]",
+      "name": "args",
+      "id": 150,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "CrossMethodTaintTest",
+      "name": "test",
+      "id": 151,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new CrossMethodTaintTest()"
+    },
+    {
+      "dataType": "String",
+      "name": "data",
+      "id": 152,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "args.length > 0 ? args[0] : null"
+    },
+    {
+      "scope": "test",
+      "name": "start",
+      "arguments": 1,
+      "id": 153,
+      "type": "METHOD_CALL"
+    },
+    {
+      "field": "length",
+      "scope": "args",
+      "id": 155,
+      "type": "FIELD_ACCESS"
+    },
+    {
+      "dataType": "Logger",
+      "name": "logger",
+      "id": 156,
+      "type": "FIELD"
+    }
+  ],
+  "scanId": "8b18702c-cc38-423c-a441-49d37eb4844c",
+  "edges": [
+    {
+      "source": 3,
+      "type": "DECLARES",
+      "target": 4
+    },
+    {
+      "source": 3,
+      "type": "DECLARES",
+      "target": 5
+    },
+    {
+      "source": 4,
+      "type": "DATA_FLOW",
+      "target": 5
+    },
+    {
+      "source": 3,
+      "type": "DECLARES",
+      "target": 6
+    },
+    {
+      "source": 5,
+      "type": "DATA_FLOW",
+      "target": 6
+    },
+    {
+      "source": 3,
+      "type": "INVOKES",
+      "target": 7
+    },
+    {
+      "source": 3,
+      "type": "INVOKES",
+      "target": 8
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 8
+    },
+    {
+      "source": 3,
+      "type": "INVOKES",
+      "target": 9
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 9
+    },
+    {
+      "source": 3,
+      "type": "INVOKES",
+      "target": 10
+    },
+    {
+      "source": 3,
+      "type": "INVOKES",
+      "target": 11
+    },
+    {
+      "source": 20,
+      "type": "DECLARES",
+      "target": 21
+    },
+    {
+      "source": 20,
+      "type": "DECLARES",
+      "target": 22
+    },
+    {
+      "source": 20,
+      "type": "INVOKES",
+      "target": 23
+    },
+    {
+      "source": 21,
+      "type": "DATA_FLOW",
+      "target": 23
+    },
+    {
+      "source": 20,
+      "type": "INVOKES",
+      "target": 24
+    },
+    {
+      "source": 20,
+      "type": "INVOKES",
+      "target": 25
+    },
+    {
+      "source": 33,
+      "type": "DECLARES",
+      "target": 34
+    },
+    {
+      "source": 33,
+      "type": "DECLARES",
+      "target": 35
+    },
+    {
+      "source": 33,
+      "type": "DECLARES",
+      "target": 36
+    },
+    {
+      "source": 34,
+      "type": "DATA_FLOW",
+      "target": 36
+    },
+    {
+      "source": 34,
+      "type": "DATA_FLOW",
+      "target": 36
+    },
+    {
+      "source": 33,
+      "type": "INVOKES",
+      "target": 37
+    },
+    {
+      "source": 36,
+      "type": "DATA_FLOW",
+      "target": 37
+    },
+    {
+      "source": 33,
+      "type": "ACCESSES",
+      "target": 39
+    },
+    {
+      "source": 2,
+      "type": "DECLARES",
+      "target": 41
+    },
+    {
+      "source": 47,
+      "type": "DECLARES",
+      "target": 48
+    },
+    {
+      "source": 47,
+      "type": "DECLARES",
+      "target": 49
+    },
+    {
+      "source": 47,
+      "type": "DECLARES",
+      "target": 50
+    },
+    {
+      "source": 49,
+      "type": "DATA_FLOW",
+      "target": 50
+    },
+    {
+      "source": 47,
+      "type": "INVOKES",
+      "target": 51
+    },
+    {
+      "source": 48,
+      "type": "DATA_FLOW",
+      "target": 51
+    },
+    {
+      "source": 47,
+      "type": "INVOKES",
+      "target": 52
+    },
+    {
+      "source": 47,
+      "type": "INVOKES",
+      "target": 53
+    },
+    {
+      "source": 50,
+      "type": "DATA_FLOW",
+      "target": 53
+    },
+    {
+      "source": 47,
+      "type": "INVOKES",
+      "target": 54
+    },
+    {
+      "source": 47,
+      "type": "INVOKES",
+      "target": 55
+    },
+    {
+      "source": 47,
+      "type": "INVOKES",
+      "target": 56
+    },
+    {
+      "source": 47,
+      "type": "ACCESSES",
+      "target": 61
+    },
+    {
+      "source": 67,
+      "type": "DECLARES",
+      "target": 68
+    },
+    {
+      "source": 67,
+      "type": "INVOKES",
+      "target": 69
+    },
+    {
+      "source": 68,
+      "type": "DATA_FLOW",
+      "target": 69
+    },
+    {
+      "source": 67,
+      "type": "INVOKES",
+      "target": 70
+    },
+    {
+      "source": 68,
+      "type": "DATA_FLOW",
+      "target": 70
+    },
+    {
+      "source": 67,
+      "type": "INVOKES",
+      "target": 71
+    },
+    {
+      "source": 68,
+      "type": "DATA_FLOW",
+      "target": 71
+    },
+    {
+      "source": 78,
+      "type": "DECLARES",
+      "target": 79
+    },
+    {
+      "source": 78,
+      "type": "DECLARES",
+      "target": 80
+    },
+    {
+      "source": 78,
+      "type": "INVOKES",
+      "target": 81
+    },
+    {
+      "source": 78,
+      "type": "ACCESSES",
+      "target": 83
+    },
+    {
+      "source": 46,
+      "type": "DECLARES",
+      "target": 85
+    },
+    {
+      "source": 91,
+      "type": "DECLARES",
+      "target": 92
+    },
+    {
+      "source": 91,
+      "type": "DECLARES",
+      "target": 93
+    },
+    {
+      "source": 92,
+      "type": "DATA_FLOW",
+      "target": 93
+    },
+    {
+      "source": 91,
+      "type": "INVOKES",
+      "target": 94
+    },
+    {
+      "source": 91,
+      "type": "INVOKES",
+      "target": 95
+    },
+    {
+      "source": 91,
+      "type": "INVOKES",
+      "target": 96
+    },
+    {
+      "source": 91,
+      "type": "INVOKES",
+      "target": 97
+    },
+    {
+      "source": 91,
+      "type": "INVOKES",
+      "target": 98
+    },
+    {
+      "source": 93,
+      "type": "DATA_FLOW",
+      "target": 98
+    },
+    {
+      "source": 91,
+      "type": "INVOKES",
+      "target": 99
+    },
+    {
+      "source": 112,
+      "type": "DECLARES",
+      "target": 113
+    },
+    {
+      "source": 112,
+      "type": "DECLARES",
+      "target": 114
+    },
+    {
+      "source": 112,
+      "type": "DECLARES",
+      "target": 115
+    },
+    {
+      "source": 113,
+      "type": "DATA_FLOW",
+      "target": 115
+    },
+    {
+      "source": 113,
+      "type": "DATA_FLOW",
+      "target": 115
+    },
+    {
+      "source": 112,
+      "type": "INVOKES",
+      "target": 116
+    },
+    {
+      "source": 115,
+      "type": "DATA_FLOW",
+      "target": 116
+    },
+    {
+      "source": 112,
+      "type": "ACCESSES",
+      "target": 118
+    },
+    {
+      "source": 90,
+      "type": "DECLARES",
+      "target": 120
+    },
+    {
+      "source": 125,
+      "type": "DECLARES",
+      "target": 126
+    },
+    {
+      "source": 125,
+      "type": "DECLARES",
+      "target": 127
+    },
+    {
+      "source": 126,
+      "type": "DATA_FLOW",
+      "target": 127
+    },
+    {
+      "source": 125,
+      "type": "INVOKES",
+      "target": 128
+    },
+    {
+      "source": 126,
+      "type": "DATA_FLOW",
+      "target": 128
+    },
+    {
+      "source": 125,
+      "type": "INVOKES",
+      "target": 129
+    },
+    {
+      "source": 127,
+      "type": "DATA_FLOW",
+      "target": 129
+    },
+    {
+      "source": 130,
+      "type": "DECLARES",
+      "target": 131
+    },
+    {
+      "source": 130,
+      "type": "INVOKES",
+      "target": 132
+    },
+    {
+      "source": 138,
+      "type": "DECLARES",
+      "target": 139
+    },
+    {
+      "source": 138,
+      "type": "INVOKES",
+      "target": 140
+    },
+    {
+      "source": 139,
+      "type": "DATA_FLOW",
+      "target": 140
+    },
+    {
+      "source": 138,
+      "type": "INVOKES",
+      "target": 141
+    },
+    {
+      "source": 138,
+      "type": "INVOKES",
+      "target": 142
+    },
+    {
+      "source": 139,
+      "type": "DATA_FLOW",
+      "target": 142
+    },
+    {
+      "source": 149,
+      "type": "DECLARES",
+      "target": 150
+    },
+    {
+      "source": 149,
+      "type": "DECLARES",
+      "target": 151
+    },
+    {
+      "source": 149,
+      "type": "DECLARES",
+      "target": 152
+    },
+    {
+      "source": 150,
+      "type": "DATA_FLOW",
+      "target": 152
+    },
+    {
+      "source": 150,
+      "type": "DATA_FLOW",
+      "target": 152
+    },
+    {
+      "source": 149,
+      "type": "INVOKES",
+      "target": 153
+    },
+    {
+      "source": 152,
+      "type": "DATA_FLOW",
+      "target": 153
+    },
+    {
+      "source": 149,
+      "type": "ACCESSES",
+      "target": 155
+    },
+    {
+      "source": 124,
+      "type": "DECLARES",
+      "target": 156
+    }
+  ],
+  "type": "DataFlowGraph",
+  "statistics": {
+    "totalEdges": 95,
+    "totalNodes": 68
+  }
+}

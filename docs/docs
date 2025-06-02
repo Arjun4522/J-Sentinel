@@ -8,14 +8,19 @@ mkdir -p /tmp/j-sentinel/uploads /tmp/j-sentinel/outputs
 
 chmod -R 777 /tmp/j-sentinel
 
-javac -cp "$CLASSPATH" scanner_test.java 
-javac -cp "$CLASSPATH" analysis_test.java
+javac -cp "lib/*" scanner_test.java 
+javac -cp "lib/*" analysis_test.java
+javac -cp "lib/* cfg_extract.java
+javac -cp "lib/*" dfg_extract.java
 
 
-java -cp "$CLASSPATH" scanner_test test/ --endpoint http://localhost:8080/api/scan
+java -cp "lib/*:." scanner_test test/ --endpoint http://localhost:8080/api/scan
 
 curl -u user:secret http://localhost:8080/api/graph?scanId=<scan-ID>
 
-java -cp "$CLASSPATH" analyse_test --api --endpoint http://localhost:8080/api/graph --scanId <scan-Id> --output taint_analysis_api.json
+java -cp "lib/*:." analyse_test --api --endpoint http://localhost:8080/api/graph --scanId <scan-ID> --output taint_analysis_api.json
 
+java -cp "lib/*:." cfg_extract --scanId <scan-ID> -output cfg.json
+java -cp "lib/*:." dfg_extract --scanId <scan-ID> -output cfg.json
 
+curl -u user:secret "http://localhost:8080/api/graph?scanId=<scan-ID>" -o ast.json

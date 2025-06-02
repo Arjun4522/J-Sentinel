@@ -1,0 +1,407 @@
+# OWASP Vulnerability Detection DSL Rules
+# Custom rule definitions for detecting OWASP Top 10 vulnerabilities from taint analysis
+
+rules:
+  
+  # ==========================================
+  # OWASP A01:2021 - Broken Access Control
+  # ==========================================
+  
+  - rule_id: "OWASP-A01-001"
+    name: "Missing Authorization Check"
+    category: "Broken Access Control"
+    owasp_category: "A01:2021"
+    severity: "HIGH"
+    description: "Direct access to sensitive operations without authorization validation"
+    pattern:
+      source_types: ["PARAMETER", "HTTP_REQUEST"]
+      sink_types: ["METHOD_CALL", "DATABASE_CALL"]
+      sink_patterns:
+        - "delete*"
+        - "remove*"
+        - "admin*"
+        - "privileged*"
+      path_constraints:
+        - not_contains: ["authorize", "authenticate", "checkPermission", "hasRole"]
+    
+  - rule_id: "OWASP-A01-002"
+    name: "Insecure Direct Object Reference"
+    category: "Broken Access Control"
+    owasp_category: "A01:2021"
+    severity: "HIGH"
+    description: "User input directly used to access objects without validation"
+    pattern:
+      source_names: ["id", "userId", "fileId", "resourceId"]
+      source_types: ["PARAMETER"]
+      sink_types: ["DATABASE_CALL", "FILE_ACCESS"]
+      path_constraints:
+        - not_contains: ["validate", "authorize", "checkOwnership"]
+
+  # ==========================================
+  # OWASP A02:2021 - Cryptographic Failures
+  # ==========================================
+  
+  - rule_id: "OWASP-A02-001"
+    name: "Sensitive Data in Logs"
+    category: "Cryptographic Failures"
+    owasp_category: "A02:2021"
+    severity: "HIGH"
+    description: "Sensitive data exposed through logging without encryption"
+    pattern:
+      source_names: ["password", "token", "key", "secret", "ssn", "creditCard", "apiKey"]
+      sink_names: ["info", "debug", "warn", "error", "log", "println", "print"]
+      sink_types: ["METHOD_CALL"]
+      sink_scopes: ["logger", "System.out", "System.err", "console"]
+    examples:
+      - vulnerability: "Potential taint flow from userInput to info"
+        source: "userInput"
+        sink: "info"
+        
+  - rule_id: "OWASP-A02-002"
+    name: "Unencrypted Sensitive Data Storage"
+    category: "Cryptographic Failures"
+    owasp_category: "A02:2021"
+    severity: "HIGH"
+    description: "Sensitive data stored without encryption"
+    pattern:
+      source_names: ["password", "token", "secret", "key", "ssn", "creditCard"]
+      sink_types: ["DATABASE_CALL", "FILE_WRITE"]
+      path_constraints:
+        - not_contains: ["encrypt", "hash", "cipher", "bcrypt", "sha"]
+
+  # ==========================================
+  # OWASP A03:2021 - Injection
+  # ==========================================
+  
+  - rule_id: "OWASP-A03-001"
+    name: "SQL Injection"
+    category: "Injection"
+    owasp_category: "A03:2021"
+    severity: "CRITICAL"
+    description: "User input directly concatenated into SQL queries"
+    pattern:
+      source_types: ["PARAMETER", "HTTP_REQUEST"]
+      sink_types: ["DATABASE_CALL", "METHOD_CALL"]
+      sink_patterns:
+        - "execute*"
+        - "query*"
+        - "createQuery"
+        - "prepareStatement"
+      path_constraints:
+        - not_contains: ["sanitize", "escape", "parameterized", "prepared"]
+        - contains_concatenation: true
+
+  - rule_id: "OWASP-A03-002"
+    name: "Log Injection/Forging"
+    category: "Injection"
+    owasp_category: "A03:2021"
+    severity: "MEDIUM"
+    description: "Unsanitized user input in log statements can lead to log injection"
+    pattern:
+      source_types: ["PARAMETER", "HTTP_REQUEST"]
+      sink_names: ["info", "debug", "warn", "error", "log", "println"]
+      sink_types: ["METHOD_CALL"]
+      sink_scopes: ["logger", "System.out", "System.err"]
+      path_constraints:
+        - not_contains: ["sanitize", "escape", "clean", "validate"]
+    examples:
+      - vulnerability: "Potential taint flow from filePath to info"
+        risk: "Attacker can inject malicious content into logs"
+      - vulnerability: "Potential taint flow from userInput to info"
+        risk: "Log forging and injection attacks possible"
+
+  - rule_id: "OWASP-A03-003"
+    name: "Command Injection"
+    category: "Injection"
+    owasp_category: "A03:2021"
+    severity: "CRITICAL"
+    description: "User input used in system commands without sanitization"
+    pattern:
+      source_types: ["PARAMETER", "HTTP_REQUEST"]
+      sink_types: ["METHOD_CALL"]
+      sink_patterns:
+        - "Runtime.exec"
+        - "ProcessBuilder"
+        - "executeCommand"
+        - "system"
+      path_constraints:
+        - not_contains: ["sanitize", "escape", "whitelist", "validate"]
+
+  # ==========================================
+  # OWASP A04:2021 - Insecure Design
+  # ==========================================
+  
+  - rule_id: "OWASP-A04-001"
+    name: "Missing Input Validation"
+    category: "Insecure Design"
+    owasp_category: "A04:2021"
+    severity: "MEDIUM"
+    description: "Critical operations performed without proper input validation"
+    pattern:
+      source_types: ["PARAMETER", "HTTP_REQUEST"]
+      sink_types: ["METHOD_CALL", "DATABASE_CALL", "FILE_ACCESS"]
+      path_constraints:
+        - not_contains: ["validate", "check", "verify", "sanitize"]
+        - path_length: "> 1"
+
+  # ==========================================
+  # OWASP A05:2021 - Security Misconfiguration
+  # ==========================================
+  
+  - rule_id: "OWASP-A05-001"
+    name: "Debug Information Exposure"
+    category: "Security Misconfiguration"
+    owasp_category: "A05:2021"
+    severity: "MEDIUM"
+    description: "Sensitive debug information exposed in production logs"
+    pattern:
+      source_types: ["PARAMETER", "LOCAL_VARIABLE"]
+      sink_names: ["debug", "trace"]
+      sink_types: ["METHOD_CALL"]
+      sink_scopes: ["logger"]
+
+  # ==========================================
+  # OWASP A06:2021 - Vulnerable Components
+  # ==========================================
+  
+  - rule_id: "OWASP-A06-001"
+    name: "Unsafe Deserialization"
+    category: "Vulnerable and Outdated Components"
+    owasp_category: "A06:2021"
+    severity: "HIGH"
+    description: "User input used in deserialization without validation"
+    pattern:
+      source_types: ["PARAMETER", "HTTP_REQUEST"]
+      sink_types: ["METHOD_CALL"]
+      sink_patterns:
+        - "readObject"
+        - "deserialize"
+        - "fromXML"
+        - "fromJSON"
+      path_constraints:
+        - not_contains: ["validate", "whitelist", "typeCheck"]
+
+  # ==========================================
+  # OWASP A07:2021 - Authentication Failures
+  # ==========================================
+  
+  - rule_id: "OWASP-A07-001"
+    name: "Weak Password Handling"
+    category: "Identification and Authentication Failures"
+    owasp_category: "A07:2021"
+    severity: "HIGH"
+    description: "Password handled without proper hashing or encryption"
+    pattern:
+      source_names: ["password", "pwd", "pass"]
+      source_types: ["PARAMETER"]
+      sink_types: ["DATABASE_CALL", "METHOD_CALL"]
+      path_constraints:
+        - not_contains: ["hash", "bcrypt", "scrypt", "pbkdf2", "encrypt"]
+
+  # ==========================================
+  # OWASP A08:2021 - Software Integrity Failures
+  # ==========================================
+  
+  - rule_id: "OWASP-A08-001"
+    name: "Unsigned Code Execution"
+    category: "Software and Data Integrity Failures"
+    owasp_category: "A08:2021"
+    severity: "HIGH"
+    description: "Dynamic code execution from untrusted sources"
+    pattern:
+      source_types: ["PARAMETER", "HTTP_REQUEST", "FILE_INPUT"]
+      sink_types: ["METHOD_CALL"]
+      sink_patterns:
+        - "eval"
+        - "compile"
+        - "loadClass"
+        - "invoke"
+
+  # ==========================================
+  # OWASP A09:2021 - Logging Failures
+  # ==========================================
+  
+  - rule_id: "OWASP-A09-001"
+    name: "Insufficient Security Logging"
+    category: "Security Logging and Monitoring Failures"
+    owasp_category: "A09:2021"
+    severity: "LOW"
+    description: "Security-sensitive operations without proper logging"
+    pattern:
+      source_types: ["PARAMETER"]
+      sink_types: ["METHOD_CALL"]
+      sink_patterns:
+        - "authenticate"
+        - "authorize"
+        - "login"
+        - "delete"
+      path_constraints:
+        - not_followed_by: ["log", "audit", "record"]
+
+  # ==========================================
+  # OWASP A10:2021 - SSRF
+  # ==========================================
+  
+  - rule_id: "OWASP-A10-001"
+    name: "Server-Side Request Forgery"
+    category: "Server-Side Request Forgery"
+    owasp_category: "A10:2021"
+    severity: "HIGH"
+    description: "User-controlled URLs used in server-side requests"
+    pattern:
+      source_names: ["url", "uri", "endpoint", "host", "domain"]
+      source_types: ["PARAMETER", "HTTP_REQUEST"]
+      sink_types: ["METHOD_CALL"]
+      sink_patterns:
+        - "openConnection"
+        - "connect"
+        - "getURL"
+        - "fetch"
+        - "request"
+      path_constraints:
+        - not_contains: ["validate", "whitelist", "allowedHosts"]
+
+# ==========================================
+# Risk Assessment Configuration
+# ==========================================
+
+risk_assessment:
+  severity_weights:
+    CRITICAL: 10
+    HIGH: 7
+    MEDIUM: 4
+    LOW: 1
+    
+  confidence_factors:
+    direct_flow: 1.0          # Direct parameter to sink
+    single_transformation: 0.8 # One intermediate variable
+    multiple_transformations: 0.6 # Multiple variables in path
+    sanitization_present: 0.3  # Some sanitization detected
+    
+  composite_scoring:
+    formula: "severity_weight * confidence_factor * path_complexity"
+    thresholds:
+      critical_alert: "> 8.0"
+      high_alert: "> 5.0"
+      medium_alert: "> 2.0"
+      low_alert: "> 0.5"
+
+# ==========================================
+# Advanced Pattern Matching
+# ==========================================
+
+pattern_extensions:
+  
+  # Context-aware rules
+  context_rules:
+    - context: "web_controller"
+      multiplier: 1.5  # Web-facing code is higher risk
+    - context: "admin_panel"
+      multiplier: 2.0  # Admin functionality is critical
+    - context: "api_endpoint"
+      multiplier: 1.3  # API endpoints need extra scrutiny
+      
+  # Data classification
+  sensitive_data_patterns:
+    pii: ["ssn", "social", "license", "passport", "dob"]
+    financial: ["credit", "account", "bank", "routing", "payment"]
+    credentials: ["password", "secret", "key", "token", "credential"]
+    technical: ["hash", "salt", "cipher", "private"]
+    
+  # Sanitization detection
+  sanitization_functions:
+    input_validation: ["validate", "check", "verify", "assert"]
+    encoding: ["encode", "escape", "sanitize", "clean"]
+    encryption: ["encrypt", "hash", "cipher", "sign"]
+    parameterization: ["prepare", "bind", "parameter"]
+
+# ==========================================
+# Custom Rule Templates
+# ==========================================
+
+rule_templates:
+  
+  # Template for creating injection rules
+  injection_template:
+    base_pattern:
+      source_types: ["PARAMETER", "HTTP_REQUEST"]
+      path_constraints:
+        - not_contains: ["sanitize", "validate", "escape"]
+    customizable:
+      - sink_patterns
+      - sink_types
+      - specific_constraints
+      
+  # Template for data exposure rules  
+  exposure_template:
+    base_pattern:
+      sink_types: ["METHOD_CALL", "FILE_WRITE", "NETWORK_SEND"]
+      path_constraints:
+        - not_contains: ["encrypt", "hash", "mask"]
+    customizable:
+      - sensitive_source_names
+      - exposure_sinks
+      
+  # Template for access control rules
+  access_control_template:
+    base_pattern:
+      sink_types: ["METHOD_CALL", "DATABASE_CALL"]
+      path_constraints:
+        - not_contains: ["authorize", "authenticate", "checkPermission"]
+    customizable:
+      - privileged_operations
+      - authorization_methods
+
+# ==========================================
+# Rule Application Logic
+# ==========================================
+
+application_logic:
+  
+  # Rule matching algorithm
+  matching:
+    strategy: "best_match"  # or "all_matches", "first_match"
+    confidence_threshold: 0.5
+    
+  # False positive reduction
+  false_positive_filters:
+    - filter: "sanitization_check"
+      description: "Skip if proper sanitization is detected"
+    - filter: "test_code_exclusion"
+      description: "Exclude obvious test code patterns"
+    - filter: "framework_safe_methods"
+      description: "Skip framework methods known to be safe"
+      
+  # Reporting configuration
+  reporting:
+    group_by: ["owasp_category", "severity"]
+    include_remediation: true
+    include_code_context: true
+    max_paths_per_vulnerability: 5
+
+# ==========================================
+# Example Usage with Provided Data
+# ==========================================
+
+example_analysis:
+  input_taint_path:
+    pathNodes:
+      - name: "userInput"
+        id: 48
+        type: "PARAMETER"
+      - scope: "logger"
+        name: "info"
+        id: 51
+        type: "METHOD_CALL"
+    vulnerability: "Potential taint flow from userInput to info"
+    
+  matched_rules:
+    - rule_id: "OWASP-A03-002"
+      confidence: 0.9
+      explanation: "User input flows directly to logging without sanitization"
+      remediation: "Sanitize user input before logging or use structured logging"
+      
+    - rule_id: "OWASP-A02-001"
+      confidence: 0.7
+      explanation: "Potential sensitive data exposure in logs"
+      remediation: "Mask or exclude sensitive data from logs"
