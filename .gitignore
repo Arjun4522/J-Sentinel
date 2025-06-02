@@ -6,4 +6,8 @@ cfg_extract_test.java
 dfg_extract_test.java
 cfg_extract_test.class
 dfg_extract_test.class
-*.class
+cfg_extract.class
+ast_extract.class
+dfg_extract.class
+scanner.class
+analyse.class  
