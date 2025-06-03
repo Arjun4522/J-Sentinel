@@ -84,6 +84,7 @@ Ensure you have the following installed:
 
 4. **Copy dependencies to `lib/` (if not already present):**
    ```bash
+
    mkdir -p lib
    cp ~/.m2/repository/com/github/javaparser/javaparser-core/3.26.2/javaparser-core-3.26.2.jar lib/
    cp ~/.m2/repository/org/json/json/20240303/json-20240303.jar lib/
@@ -101,6 +102,10 @@ Ensure you have the following installed:
    ```bash
    cd api-gateway
    ./mvnw spring-boot:run
+
+   javac -cp "$CLASSPATH" scanner.java
+   javac -cp "$CLASSPATH" analyse.java
+
    ```
 
 ## 🚀 Usage
@@ -125,6 +130,7 @@ Run the CLI from the project root:
 #### Options
 | Option | Description | Default |
 |--------|-------------|---------|
+
 | `--input <path>` | Input directory or file for scanning | `test/` |
 | `--output <file>` | Output JSON file path | `output/<subcommand>.json` |
 | `--endpoint <url>` | API Gateway endpoint | `http://localhost:8080/api` |
@@ -132,6 +138,19 @@ Run the CLI from the project root:
 | `--password <pass>` | API password | `secret` |
 | `--local` | Run in local mode (no API) | API mode |
 | `--help` | Show help message | - |
+| `--local` | Save output locally instead of uploading to API | Upload to API |
+| `--output <path>` | Specify output file path | `codegraph.json` |
+| `--endpoint <url>` | Custom API endpoint URL | `http://localhost:8080/api/scan` |
+
+#### Examples
+```bash
+# Analyze a single Java file locally
+java -cp "$CLASSPATH" scanner ./src/main/java/MyClass.java --local --output analysis.json
+
+# Analyze and upload to API
+java -cp "$CLASSPATH" scanner_test test/ --endpoint http://localhost:8080/api/scan
+
+```
 
 ### Direct Java Usage (Advanced)
 
