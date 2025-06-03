@@ -1,6 +1,7 @@
 package com.example.api_gateway.controller;
 
 import com.example.api_gateway.service.GraphStorageService;
+import com.example.api_gateway.service.TaintAnalyseService;
 import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,9 +13,11 @@ import reactor.core.publisher.Mono;
 public class GraphController {
 
     private final GraphStorageService graphStorageService;
+    private final TaintAnalyseService taintAnalyseService;
 
-    public GraphController(GraphStorageService graphStorageService) {
+    public GraphController(GraphStorageService graphStorageService, TaintAnalyseService taintAnalyseService) {
         this.graphStorageService = graphStorageService;
+        this.taintAnalyseService = taintAnalyseService;
     }
 
     @PostMapping("/scan")
@@ -69,8 +72,29 @@ public class GraphController {
         }
         return Mono.just(ResponseEntity.ok(ast.toString()));
     }
+
+    @GetMapping("/taint")
+    public Mono<ResponseEntity<String>> getTaintAnalysis(@RequestParam String scanId) {
+        JSONObject taintResult = taintAnalyseService.analyzeCodeGraph(scanId);
+        if (taintResult == null) {
+            return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Taint analysis results not found for scanId: " + scanId));
+        }
+        return Mono.just(ResponseEntity.ok(taintResult.toString()));
+    }
+
+    @GetMapping("/taint_analyse")
+    public Mono<ResponseEntity<String>> getTaintAnalyse(@RequestParam String scanId) {
+        JSONObject taintResult = taintAnalyseService.analyzeCodeGraph(scanId);
+        if (taintResult == null) {
+            return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Taint analysis results not found for scanId: " + scanId));
+        }
+        return Mono.just(ResponseEntity.ok(taintResult.toString()));
+    }
+
     @GetMapping("/health")
     public Mono<ResponseEntity<String>> health() {
         return Mono.just(ResponseEntity.ok("API Gateway is running"));
-}
+    }
 }

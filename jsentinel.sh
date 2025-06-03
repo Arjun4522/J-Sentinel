@@ -168,15 +168,15 @@ case "$SUBCOMMAND" in
         if [[ "$SUBCOMMAND" == "taint" ]]; then
             JAVA_FILE="$BASE_DIR/analyse.java"
             JAVA_CLASS="analyse_test"
-            ENDPOINT_PATH="taint_analyse"
+            ENDPOINT_PATH="taint"
         elif [[ "$SUBCOMMAND" == "cfg" ]]; then
             JAVA_FILE="$BASE_DIR/cfg_extract.java"
             JAVA_CLASS="cfg_extract"
-            ENDPOINT_PATH="cfg_extract"
+            ENDPOINT_PATH="cfg"
         else
             JAVA_FILE="$BASE_DIR/dfg_extract.java"
             JAVA_CLASS="dfg_extract"
-            ENDPOINT_PATH="dfg_extract"
+            ENDPOINT_PATH="dfg"
         fi
         if [[ ! -f "$JAVA_FILE" ]]; then
             echo "Error: ${JAVA_FILE##*/} not found in $BASE_DIR"
