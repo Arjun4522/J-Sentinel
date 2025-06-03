@@ -217,22 +217,7 @@ app.output.dir=/tmp/j-sentinel/outputs
 
 ### CLI Workflow (Recommended)
 
-1. **Local Mode**:
-   ```bash
-   # Scan code and generate code graph
-   ./jsentinel.sh scan --input test/ --local --output output/codegraph.json
-   
-   # Extract CFG
-   ./jsentinel.sh cfg --local --output output/cfg.json
-   
-   # Extract DFG
-   ./jsentinel.sh dfg --local --output output/dfg.json
-   
-   # Perform taint analysis
-   ./jsentinel.sh taint --local --output output/taint_analysis.json
-   ```
-
-2. **API Mode**:
+1. **API Mode**:
    ```bash
    # Start API Gateway (in separate terminal)
    cd api-gateway && ./mvnw spring-boot:run
@@ -250,7 +235,7 @@ app.output.dir=/tmp/j-sentinel/outputs
    ./jsentinel.sh taint --endpoint http://localhost:8080/api --user user --password secret --output output/taint_analysis.json
    ```
 
-3. **View Results**:
+2. **View Results**:
    ```bash
    ls -l output/
    head -n 10 output/taint_analysis.json
