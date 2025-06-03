@@ -11,3 +11,23 @@ ast_extract.class
 dfg_extract.class
 scanner.class
 analyse.class  
+
+# Java compiled files
+*.class
+
+# Temporary directories
+/tmp/j-sentinel/
+
+# IDE files
+.idea/
+*.iml
+
+# Maven build artifacts (for api-gateway)
+api-gateway/target/
+
+# Log files
+*.log
+
+# Other generated files
+*.bak
+*.swp

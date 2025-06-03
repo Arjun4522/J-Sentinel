@@ -1,29 +1,17 @@
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.body.Parameter;
-import com.github.javaparser.ast.expr.AssignExpr;
-import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.stmt.ExpressionStmt;
-import org.jgrapht.graph.DefaultDirectedGraph;
-import org.jgrapht.graph.DefaultEdge;
+package com.example.api_gateway.service;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 import java.util.*;
 
-public class analyse {
-    private static String apiEndpoint = "http://localhost:8080/api/graph";
-    private static String outputPath = "taint_analysis.json";
-    private static String scanId = "";
-    private static String apiUser = "user";
-    private static String apiPassword = "secret";
+@Service
+public class TaintAnalyseService {
+
+    private static final Logger logger = LoggerFactory.getLogger(TaintAnalyseService.class);
+    private final GraphStorageService graphStorageService;
 
     private static final Set<String> TAINT_SOURCES = new HashSet<>(Arrays.asList(
         "getParameter", "readLine", "getInputStream", "nextLine", "read"
@@ -32,97 +20,28 @@ public class analyse {
         "executeQuery", "println", "print", "info", "debug", "warn", "error", "log", "severe", "warning"
     ));
 
-    public static void main(String[] args) throws IOException {
-        parseArguments(args);
-        if (scanId.isEmpty()) {
-            System.err.println("Error: --scanId is required");
-            return;
-        }
-        JSONObject codeGraph = readCodeGraph();
+    public TaintAnalyseService(GraphStorageService graphStorageService) {
+        this.graphStorageService = graphStorageService;
+    }
+
+    public JSONObject analyzeCodeGraph(String scanId) {
+        logger.info("Starting taint analysis for scanId: {}", scanId);
+        JSONObject codeGraph = graphStorageService.getGraph(scanId);
         if (codeGraph == null) {
-            System.err.println("Error: Could not read code graph from API");
-            return;
+            logger.warn("No code graph found for scanId: {}", scanId);
+            return null;
         }
-        JSONArray taintedPaths = analyzeCodeGraph(codeGraph);
+
+        JSONArray taintedPaths = analyzeGraph(codeGraph);
         JSONObject result = new JSONObject();
-        result.put("scanId", codeGraph.getString("scanId"));
+        result.put("scanId", scanId);
         result.put("timestamp", System.currentTimeMillis());
         result.put("taintedPaths", taintedPaths);
-        saveResults(result);
-        System.out.println("Taint analysis completed. Results saved to " + outputPath);
-        System.out.println("Found " + taintedPaths.length() + " tainted paths");
+        logger.info("Taint analysis completed for scanId: {}, found {} tainted paths", scanId, taintedPaths.length());
+        return result;
     }
 
-    private static void parseArguments(String[] args) {
-        for (int i = 0; i < args.length; i++) {
-            switch (args[i]) {
-                case "--endpoint":
-                    if (i + 1 < args.length) {
-                        apiEndpoint = args[++i];
-                    }
-                    break;
-                case "--output":
-                    if (i + 1 < args.length) {
-                        outputPath = args[++i];
-                    }
-                    break;
-                case "--scanId":
-                    if (i + 1 < args.length) {
-                        scanId = args[++i];
-                    }
-                    break;
-                case "--user":
-                    if (i + 1 < args.length) {
-                        apiUser = args[++i];
-                    }
-                    break;
-                case "--password":
-                    if (i + 1 < args.length) {
-                        apiPassword = args[++i];
-                    }
-                    break;
-            }
-        }
-    }
-
-    private static JSONObject readCodeGraph() throws IOException {
-        String url = apiEndpoint + (apiEndpoint.contains("?") ? "&" : "?") + "scanId=" + scanId;
-        HttpURLConnection conn = null;
-        try {
-            conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Accept", "application/json");
-
-            String auth = (System.getenv("API_USER") != null ? System.getenv("API_USER") : apiUser) + ":" +
-                          (System.getenv("API_PASSWORD") != null ? System.getenv("API_PASSWORD") : apiPassword);
-            String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
-            conn.setRequestProperty("Authorization", "Basic " + encodedAuth);
-
-            int responseCode = conn.getResponseCode();
-            if (responseCode != 200) {
-                System.err.println("Failed to fetch code graph: HTTP " + responseCode);
-                try (java.io.InputStream errorStream = conn.getErrorStream()) {
-                    if (errorStream != null) {
-                        System.err.println("Error details: " + new String(errorStream.readAllBytes()));
-                    }
-                }
-                return null;
-            }
-            try (java.io.InputStream is = conn.getInputStream()) {
-                String jsonText = new String(is.readAllBytes());
-                return new JSONObject(jsonText);
-            }
-        } catch (IOException e) {
-            System.err.println("Error fetching code graph from API: " + e.getMessage());
-            return null;
-        } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
-        }
-    }
-
-    private static JSONArray analyzeCodeGraph(JSONObject codeGraph) {
+    private JSONArray analyzeGraph(JSONObject codeGraph) {
         JSONArray nodes = codeGraph.getJSONArray("nodes");
         JSONArray edges = codeGraph.getJSONArray("edges");
         JSONArray taintedPaths = new JSONArray();
@@ -130,8 +49,7 @@ public class analyse {
         Map<Integer, JSONObject> nodeMap = new HashMap<>();
         for (int i = 0; i < nodes.length(); i++) {
             JSONObject node = nodes.getJSONObject(i);
-            int nodeId = node.getInt("id");
-            nodeMap.put(nodeId, node);
+            nodeMap.put(node.getInt("id"), node);
         }
 
         Map<Integer, Set<Integer>> adjacencyMap = buildAdjacencyMap(edges);
@@ -145,10 +63,10 @@ public class analyse {
             String type = node.getString("type");
             if (type.equals("METHOD_CALL") && TAINT_SOURCES.contains(node.getString("name"))) {
                 sources.add(node.getInt("id"));
-                System.out.println("Found taint source (method call): " + node.getString("name") + " (ID: " + node.getInt("id") + ")");
+                logger.debug("Found taint source (method call): {} (ID: {})", node.getString("name"), node.getInt("id"));
             } else if (type.equals("PARAMETER")) {
                 sources.add(node.getInt("id"));
-                System.out.println("Found taint source (parameter): " + node.getString("name") + " (ID: " + node.getInt("id") + ")");
+                logger.debug("Found taint source (parameter): {} (ID: {})", node.getString("name"), node.getInt("id"));
             }
         }
 
@@ -157,8 +75,7 @@ public class analyse {
                 boolean isTainted = false;
                 if (node.has("arguments") && node.getInt("arguments") > 0) {
                     for (Integer sourceId : sources) {
-                        Set<Integer> reachableNodes = findReachableNodes(sourceId, dataFlowMap);
-                        if (reachableNodes.contains(node.getInt("id"))) {
+                        if (findReachableNodes(sourceId, dataFlowMap).contains(node.getInt("id"))) {
                             isTainted = true;
                             break;
                         }
@@ -166,9 +83,7 @@ public class analyse {
                 }
                 if (isTainted) {
                     sinks.add(node.getInt("id"));
-                    System.out.println("Found sensitive sink: " + node.getString("name") + " (ID: " + node.getInt("id") + ")");
-                } else {
-                    System.out.println("Excluded sink (no tainted arguments): " + node.getString("name") + " (ID: " + node.getInt("id") + ")");
+                    logger.debug("Found sensitive sink: {} (ID: {})", node.getString("name"), node.getInt("id"));
                 }
             }
         }
@@ -180,7 +95,7 @@ public class analyse {
                     JSONObject sourceNode = nodeMap.get(sourceId);
                     if (initializer.contains(sourceNode.optString("name", ""))) {
                         taintedVariables.computeIfAbsent(node.getInt("id"), k -> new HashSet<>()).add(sourceId);
-                        System.out.println("Tainted variable: " + node.getString("name") + " (ID: " + node.getInt("id") + ") from source ID: " + sourceId);
+                        logger.debug("Tainted variable: {} (ID: {}) from source ID: {}", node.getString("name"), node.getInt("id"), sourceId);
                     }
                 }
             }
@@ -188,18 +103,14 @@ public class analyse {
 
         for (Integer sourceId : sources) {
             JSONObject sourceNode = nodeMap.get(sourceId);
-            System.out.println("Analyzing paths from source: " + sourceNode.getString("name") + " (ID: " + sourceId + ")");
-
+            logger.debug("Analyzing paths from source: {} (ID: {})", sourceNode.getString("name"), sourceId);
             Set<Integer> reachableSinks = findReachableSinks(sourceId, sinks, dataFlowMap, nodeMap);
-            System.out.println("Reachable sinks from source " + sourceId + ": " + reachableSinks);
 
             for (Integer sinkId : reachableSinks) {
                 JSONObject sinkNode = nodeMap.get(sinkId);
                 List<Integer> path = findPath(sourceId, sinkId, adjacencyMap, dataFlowMap, nodeMap);
 
                 if (path != null) {
-                    System.out.println("Found taint path: " + path);
-
                     JSONObject pathObj = new JSONObject();
                     JSONArray pathNodes = new JSONArray();
 
@@ -225,8 +136,7 @@ public class analyse {
                     pathObj.put("severity", severity);
 
                     taintedPaths.put(pathObj);
-                } else {
-                    System.out.println("No path found from source " + sourceId + " to sink " + sinkId);
+                    logger.debug("Found taint path: {}", path);
                 }
             }
         }
@@ -234,33 +144,28 @@ public class analyse {
         return taintedPaths;
     }
 
-    private static Map<Integer, Set<Integer>> buildAdjacencyMap(JSONArray edges) {
+    private Map<Integer, Set<Integer>> buildAdjacencyMap(JSONArray edges) {
         Map<Integer, Set<Integer>> adjacencyMap = new HashMap<>();
-
         for (int i = 0; i < edges.length(); i++) {
             JSONObject edge = edges.getJSONObject(i);
             int source = edge.getInt("source");
             int target = edge.getInt("target");
             String type = edge.getString("type");
 
-            System.out.println("Processing edge: " + edge);
-            if (type.equals("CONTAINS") || type.equals("INVOKES") || 
-                type.equals("CONTAINS_CONTROL_FLOW") || 
-                type.equals("CONTAINS_EXPRESSION") || 
-                type.equals("DATA_FLOW")) {
+            if (type.equals("CONTAINS") || type.equals("INVOKES") ||
+                type.equals("CONTAINS_CONTROL_FLOW") ||
+                type.equals("CONTAINS_EXPRESSION") || type.equals("DATA_FLOW")) {
                 adjacencyMap.computeIfAbsent(source, k -> new HashSet<>()).add(target);
                 if (type.equals("CONTAINS_EXPRESSION") || type.equals("INVOKES") || type.equals("DATA_FLOW")) {
                     adjacencyMap.computeIfAbsent(target, k -> new HashSet<>()).add(source);
                 }
             }
         }
-
         return adjacencyMap;
     }
 
-    private static Map<Integer, Set<Integer>> buildDataFlowMap(JSONArray edges, Map<Integer, JSONObject> nodeMap) {
+    private Map<Integer, Set<Integer>> buildDataFlowMap(JSONArray edges, Map<Integer, JSONObject> nodeMap) {
         Map<Integer, Set<Integer>> dataFlowMap = new HashMap<>();
-
         for (int i = 0; i < edges.length(); i++) {
             JSONObject edge = edges.getJSONObject(i);
             if (edge.getString("type").equals("DATA_FLOW")) {
@@ -288,11 +193,10 @@ public class analyse {
                 }
             }
         }
-
         return dataFlowMap;
     }
 
-    private static Set<Integer> findReachableNodes(Integer sourceId, Map<Integer, Set<Integer>> adjacencyMap) {
+    private Set<Integer> findReachableNodes(Integer sourceId, Map<Integer, Set<Integer>> adjacencyMap) {
         Set<Integer> reachable = new HashSet<>();
         Set<Integer> visited = new HashSet<>();
         Queue<Integer> queue = new LinkedList<>();
@@ -312,13 +216,12 @@ public class analyse {
                 }
             }
         }
-
         return reachable;
     }
 
-    private static Set<Integer> findReachableSinks(Integer sourceId, List<Integer> sinks, 
-                                                   Map<Integer, Set<Integer>> dataFlowMap, 
-                                                   Map<Integer, JSONObject> nodeMap) {
+    private Set<Integer> findReachableSinks(Integer sourceId, List<Integer> sinks,
+                                           Map<Integer, Set<Integer>> dataFlowMap,
+                                           Map<Integer, JSONObject> nodeMap) {
         Set<Integer> reachableSinks = new HashSet<>();
         Set<Integer> visited = new HashSet<>();
         Queue<Integer> queue = new LinkedList<>();
@@ -341,14 +244,13 @@ public class analyse {
                 }
             }
         }
-
         return reachableSinks;
     }
 
-    private static List<Integer> findPath(Integer sourceId, Integer sinkId, 
-                                         Map<Integer, Set<Integer>> adjacencyMap,
-                                         Map<Integer, Set<Integer>> dataFlowMap,
-                                         Map<Integer, JSONObject> nodeMap) {
+    private List<Integer> findPath(Integer sourceId, Integer sinkId,
+                                  Map<Integer, Set<Integer>> adjacencyMap,
+                                  Map<Integer, Set<Integer>> dataFlowMap,
+                                  Map<Integer, JSONObject> nodeMap) {
         Map<Integer, Integer> parent = new HashMap<>();
         Set<Integer> visited = new HashSet<>();
         Queue<Integer> queue = new LinkedList<>();
@@ -382,22 +284,21 @@ public class analyse {
                 }
             }
         }
-
         return null;
     }
 
-    private static String determineSeverity(JSONObject sourceNode, JSONObject sinkNode, 
-                                           Map<Integer, JSONObject> nodeMap, 
-                                           Map<Integer, Set<Integer>> dataFlowMap) {
+    private String determineSeverity(JSONObject sourceNode, JSONObject sinkNode,
+                                    Map<Integer, JSONObject> nodeMap,
+                                    Map<Integer, Set<Integer>> dataFlowMap) {
         boolean isStaticString = sinkNode.has("arguments") && sinkNode.getInt("arguments") == 1 &&
-            nodeMap.values().stream().anyMatch(node -> 
-                node.getString("type").equals("STRING_LITERAL") && 
+            nodeMap.values().stream().anyMatch(node ->
+                node.getString("type").equals("STRING_LITERAL") &&
                 dataFlowMap.getOrDefault(sinkNode.getInt("id"), new HashSet<>()).contains(node.getInt("id")));
-        
+
         if (isStaticString) {
             return "LOW";
         }
-        if (SENSITIVE_SINKS.contains(sinkNode.getString("name")) && 
+        if (SENSITIVE_SINKS.contains(sinkNode.getString("name")) &&
             (sourceNode.getString("type").equals("PARAMETER") || TAINT_SOURCES.contains(sourceNode.getString("name")))) {
             return "HIGH";
         }
@@ -405,15 +306,5 @@ public class analyse {
             return "MEDIUM";
         }
         return "HIGH";
-    }
-
-    private static void saveResults(JSONObject result) throws IOException {
-        try (java.io.FileWriter file = new java.io.FileWriter(outputPath)) {
-            file.write(result.toString(2));
-            System.out.println("Successfully saved results to " + outputPath);
-        } catch (IOException e) {
-            System.err.println("Error saving results to " + outputPath + ": " + e.getMessage());
-            throw e;
-        }
     }
 }
