@@ -12,10 +12,36 @@ API_USER="user"
 API_PASSWORD="secret"
 DEFAULT_ENDPOINT="http://localhost:8080/api"
 SCANID_FILE="$BASE_DIR/.jsentinel_scanid"
-DEFAULT_CODEGRAPH="$OUTPUT_DIR/codegraph.json"
+DEFAULT_CODEGRAPH="$OUTPUT_DIR/scan.json"
 
 # Ensure output directory exists
 mkdir -p "$OUTPUT_DIR"
+
+# Format JSON file using jq or Python
+format_json() {
+    local file="$1"
+    if [[ ! -f "$file" ]]; then
+        echo "Error: Cannot format $file (file not found)"
+        return 1
+    fi
+    if command -v jq &> /dev/null; then
+        jq . "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+        if [[ $? -eq 0 ]]; then
+            echo "Formatted JSON in $file using jq"
+        else
+            echo "Error: Failed to format $file with jq"
+            return 1
+        fi
+    else
+        python3 -c "import json; with open('$file', 'r') as f: data = json.load(f); with open('$file', 'w') as f: json.dump(data, f, indent=2)" 2>/dev/null
+        if [[ $? -eq 0 ]]; then
+            echo "Formatted JSON in $file using Python"
+        else
+            echo "Warning: Could not format $file (install jq or ensure Python is available)"
+            return 1
+        fi
+    fi
+}
 
 # Help message
 usage() {
@@ -31,7 +57,7 @@ usage() {
     echo "Options:"
     echo "  --input <path>       Input directory or file (default: test/)"
     echo "  --output <file>      Output JSON file (default: output/<subcommand>.json)"
-    echo "  --endpoint <url>     API gateway endpoint (e.g., http://localhost:8080/api)"
+    echo "  --endpoint <url>     API gateway endpoint (default: $DEFAULT_ENDPOINT)"
     echo "  --user <username>    API username (default: user)"
     echo "  --password <pass>    API password (default: secret)"
     echo "  --local              Run in local mode (no API)"
@@ -41,7 +67,7 @@ usage() {
 
 # Compile Java files if needed
 compile_java() {
-    local java_file=$1
+    local java_file="$1"
     if [[ ! -f "${java_file%.java}.class" ]] || [[ "$java_file" -nt "${java_file%.java}.class" ]]; then
         echo "Compiling $java_file..."
         javac -cp "$CLASSPATH" "$java_file"
@@ -54,9 +80,13 @@ compile_java() {
 
 # Extract scanId from JSON file
 extract_scanid() {
-    local json_file=$1
+    local json_file="$1"
     if [[ -f "$json_file" ]]; then
-        grep -o '"scanId":"[^"]*"' "$json_file" | cut -d'"' -f4
+        if command -v jq &> /dev/null; then
+            jq -r '.scanId' "$json_file" 2>/dev/null
+        else
+            grep -o '"scanId":"[^"]*"' "$json_file" | cut -d'"' -f4
+        fi
     fi
 }
 
@@ -126,48 +156,30 @@ case "$SUBCOMMAND" in
             exit 1
         fi
         compile_java "$JAVA_FILE"
-        if [[ "$LOCAL_MODE" == true ]]; then
-            echo "Running scanner locally..."
-            java -cp "$CLASSPATH" scanner "$INPUT_DIR" --local --output "$DEFAULT_CODEGRAPH"
-            if [[ $? -eq 0 && -f "$DEFAULT_CODEGRAPH" ]]; then
-                SCAN_ID=$(extract_scanid "$DEFAULT_CODEGRAPH")
-                if [[ -n "$SCAN_ID" ]]; then
-                    echo "$SCAN_ID" > "$SCANID_FILE"
-                    echo "Scan ID: $SCAN_ID stored in $SCANID_FILE"
-                else
-                    echo "Error: Could not extract scanId from $DEFAULT_CODEGRAPH"
-                    exit 1
-                fi
-                cp "$DEFAULT_CODEGRAPH" "$OUTPUT_FILE"
+        echo "Running scanner with API endpoint ${ENDPOINT:-$DEFAULT_ENDPOINT}/scan..."
+        OUTPUT=$(java -cp "$CLASSPATH" scanner "$INPUT_DIR" --endpoint "${ENDPOINT:-$DEFAULT_ENDPOINT}/scan" 2>&1)
+        if [[ $? -eq 0 ]]; then
+            SCAN_ID=$(echo "$OUTPUT" | grep -o 'scanId: [a-f0-9-]*' | cut -d' ' -f2)
+            if [[ -n "$SCAN_ID" ]]; then
+                echo "$SCAN_ID" > "$SCANID_FILE"
+                echo "Scan ID: $SCAN_ID stored in $SCANID_FILE"
+                curl -u "$API_USER:$API_PASSWORD" "${ENDPOINT:-$DEFAULT_ENDPOINT}/graph?scanId=$SCAN_ID" -o "$OUTPUT_FILE"
+                format_json "$OUTPUT_FILE"
             else
-                echo "Error: Scanner failed or output not created"
-                exit 1
-            fi
-        else
-            echo "Running scanner with API endpoint ${ENDPOINT:-$DEFAULT_ENDPOINT}/scan..."
-            OUTPUT=$(java -cp "$CLASSPATH" scanner "$INPUT_DIR" --endpoint "${ENDPOINT:-$DEFAULT_ENDPOINT}/scan" 2>&1)
-            if [[ $? -eq 0 ]]; then
-                SCAN_ID=$(echo "$OUTPUT" | grep -o 'scanId: [a-f0-9-]*' | cut -d' ' -f2)
-                if [[ -n "$SCAN_ID" ]]; then
-                    echo "$SCAN_ID" > "$SCANID_FILE"
-                    echo "Scan ID: $SCAN_ID stored in $SCANID_FILE"
-                    curl -u "$API_USER:$API_PASSWORD" "${ENDPOINT:-$DEFAULT_ENDPOINT}/graph?scanId=$SCAN_ID" -o "$OUTPUT_FILE"
-                else
-                    echo "Error: Could not extract scanId from scanner output"
-                    echo "$OUTPUT"
-                    exit 1
-                fi
-            else
-                echo "Error: Scanner failed"
+                echo "Error: Could not extract scanId from scanner output"
                 echo "$OUTPUT"
                 exit 1
             fi
+        else
+            echo "Error: Scanner failed"
+            echo "$OUTPUT"
+            exit 1
         fi
         ;;
     taint|cfg|dfg)
         if [[ "$SUBCOMMAND" == "taint" ]]; then
             JAVA_FILE="$BASE_DIR/analyse.java"
-            JAVA_CLASS="analyse_test"
+            JAVA_CLASS="analyse"
             ENDPOINT_PATH="taint"
         elif [[ "$SUBCOMMAND" == "cfg" ]]; then
             JAVA_FILE="$BASE_DIR/cfg_extract.java"
@@ -186,6 +198,7 @@ case "$SUBCOMMAND" in
         if [[ "$LOCAL_MODE" == true ]]; then
             echo "Running $SUBCOMMAND locally using $DEFAULT_CODEGRAPH..."
             java -cp "$CLASSPATH" "$JAVA_CLASS" --local "$DEFAULT_CODEGRAPH" --output "$OUTPUT_FILE"
+            format_json "$OUTPUT_FILE"
         else
             if [[ ! -f "$SCANID_FILE" ]]; then
                 echo "Error: No scanId found. Run 'jsentinel scan' first."
@@ -198,6 +211,7 @@ case "$SUBCOMMAND" in
             fi
             echo "Running $SUBCOMMAND via API for scanId $SCAN_ID..."
             curl -u "$API_USER:$API_PASSWORD" "${ENDPOINT:-$DEFAULT_ENDPOINT}/$ENDPOINT_PATH?scanId=$SCAN_ID" -o "$OUTPUT_FILE"
+            format_json "$OUTPUT_FILE"
         fi
         ;;
 esac
@@ -205,7 +219,7 @@ esac
 # Verify output
 if [[ -f "$OUTPUT_FILE" ]]; then
     echo "Output written to $OUTPUT_FILE"
-    head -n 10 "$OUTPUT_FILE"
+    head -n 20 "$OUTPUT_FILE"
 else
     echo "Error: Output file $OUTPUT_FILE was not created"
     exit 1

@@ -1,1 +1,189 @@
-{"scanId":"874bec65-f64b-4f77-8a90-6dfb6b0319b7","taintedPaths":[{"pathNodes":[{"name":"filePath","id":4,"type":"PARAMETER"},{"name":"reader","id":5,"type":"LOCAL_VARIABLE"},{"name":"line","id":6,"type":"LOCAL_VARIABLE"},{"scope":"logger","name":"info","id":8,"type":"METHOD_CALL"}],"sourceId":4,"severity":"HIGH","sinkId":8,"sourceName":"filePath","vulnerability":"Potential taint flow from filePath to info","sinkName":"info"},{"pathNodes":[{"name":"content","id":21,"type":"PARAMETER"},{"scope":"writer","name":"println","id":23,"type":"METHOD_CALL"}],"sourceId":21,"severity":"HIGH","sinkId":23,"sourceName":"content","vulnerability":"Potential taint flow from content to println","sinkName":"println"},{"pathNodes":[{"name":"userInput","id":48,"type":"PARAMETER"},{"scope":"logger","name":"info","id":51,"type":"METHOD_CALL"}],"sourceId":48,"severity":"HIGH","sinkId":51,"sourceName":"userInput","vulnerability":"Potential taint flow from userInput to info","sinkName":"info"},{"pathNodes":[{"name":"input","id":68,"type":"PARAMETER"},{"scope":"logger","name":"info","id":70,"type":"METHOD_CALL"}],"sourceId":68,"severity":"HIGH","sinkId":70,"sourceName":"input","vulnerability":"Potential taint flow from input to info","sinkName":"info"},{"pathNodes":[{"name":"input","id":68,"type":"PARAMETER"},{"scope":"logger","name":"warning","id":71,"type":"METHOD_CALL"}],"sourceId":68,"severity":"HIGH","sinkId":71,"sourceName":"input","vulnerability":"Potential taint flow from input to warning","sinkName":"warning"},{"pathNodes":[{"name":"userInput","id":92,"type":"PARAMETER"},{"name":"sanitized","id":93,"type":"LOCAL_VARIABLE"},{"scope":"logger","name":"info","id":98,"type":"METHOD_CALL"}],"sourceId":92,"severity":"HIGH","sinkId":98,"sourceName":"userInput","vulnerability":"Potential taint flow from userInput to info","sinkName":"info"},{"pathNodes":[{"name":"data","id":139,"type":"PARAMETER"},{"scope":"logger","name":"info","id":140,"type":"METHOD_CALL"}],"sourceId":139,"severity":"HIGH","sinkId":140,"sourceName":"data","vulnerability":"Potential taint flow from data to info","sinkName":"info"},{"pathNodes":[{"name":"data","id":139,"type":"PARAMETER"},{"scope":"logger","name":"warning","id":142,"type":"METHOD_CALL"}],"sourceId":139,"severity":"HIGH","sinkId":142,"sourceName":"data","vulnerability":"Potential taint flow from data to warning","sinkName":"warning"}],"timestamp":1748968415954}
+{
+  "scanId": "505f3a22-e96b-400e-b70c-b5e41b1e1a4a",
+  "taintedPaths": [
+    {
+      "pathNodes": [
+        {
+          "name": "filePath",
+          "id": 4,
+          "type": "PARAMETER"
+        },
+        {
+          "name": "reader",
+          "id": 5,
+          "type": "LOCAL_VARIABLE"
+        },
+        {
+          "name": "line",
+          "id": 6,
+          "type": "LOCAL_VARIABLE"
+        },
+        {
+          "scope": "logger",
+          "name": "info",
+          "id": 8,
+          "type": "METHOD_CALL"
+        }
+      ],
+      "sourceId": 4,
+      "severity": "HIGH",
+      "sinkId": 8,
+      "sourceName": "filePath",
+      "vulnerability": "Potential taint flow from filePath to info",
+      "sinkName": "info"
+    },
+    {
+      "pathNodes": [
+        {
+          "name": "content",
+          "id": 21,
+          "type": "PARAMETER"
+        },
+        {
+          "scope": "writer",
+          "name": "println",
+          "id": 23,
+          "type": "METHOD_CALL"
+        }
+      ],
+      "sourceId": 21,
+      "severity": "HIGH",
+      "sinkId": 23,
+      "sourceName": "content",
+      "vulnerability": "Potential taint flow from content to println",
+      "sinkName": "println"
+    },
+    {
+      "pathNodes": [
+        {
+          "name": "userInput",
+          "id": 48,
+          "type": "PARAMETER"
+        },
+        {
+          "scope": "logger",
+          "name": "info",
+          "id": 51,
+          "type": "METHOD_CALL"
+        }
+      ],
+      "sourceId": 48,
+      "severity": "HIGH",
+      "sinkId": 51,
+      "sourceName": "userInput",
+      "vulnerability": "Potential taint flow from userInput to info",
+      "sinkName": "info"
+    },
+    {
+      "pathNodes": [
+        {
+          "name": "input",
+          "id": 68,
+          "type": "PARAMETER"
+        },
+        {
+          "scope": "logger",
+          "name": "info",
+          "id": 70,
+          "type": "METHOD_CALL"
+        }
+      ],
+      "sourceId": 68,
+      "severity": "HIGH",
+      "sinkId": 70,
+      "sourceName": "input",
+      "vulnerability": "Potential taint flow from input to info",
+      "sinkName": "info"
+    },
+    {
+      "pathNodes": [
+        {
+          "name": "input",
+          "id": 68,
+          "type": "PARAMETER"
+        },
+        {
+          "scope": "logger",
+          "name": "warning",
+          "id": 71,
+          "type": "METHOD_CALL"
+        }
+      ],
+      "sourceId": 68,
+      "severity": "HIGH",
+      "sinkId": 71,
+      "sourceName": "input",
+      "vulnerability": "Potential taint flow from input to warning",
+      "sinkName": "warning"
+    },
+    {
+      "pathNodes": [
+        {
+          "name": "userInput",
+          "id": 92,
+          "type": "PARAMETER"
+        },
+        {
+          "name": "sanitized",
+          "id": 93,
+          "type": "LOCAL_VARIABLE"
+        },
+        {
+          "scope": "logger",
+          "name": "info",
+          "id": 98,
+          "type": "METHOD_CALL"
+        }
+      ],
+      "sourceId": 92,
+      "severity": "HIGH",
+      "sinkId": 98,
+      "sourceName": "userInput",
+      "vulnerability": "Potential taint flow from userInput to info",
+      "sinkName": "info"
+    },
+    {
+      "pathNodes": [
+        {
+          "name": "data",
+          "id": 139,
+          "type": "PARAMETER"
+        },
+        {
+          "scope": "logger",
+          "name": "info",
+          "id": 140,
+          "type": "METHOD_CALL"
+        }
+      ],
+      "sourceId": 139,
+      "severity": "HIGH",
+      "sinkId": 140,
+      "sourceName": "data",
+      "vulnerability": "Potential taint flow from data to info",
+      "sinkName": "info"
+    },
+    {
+      "pathNodes": [
+        {
+          "name": "data",
+          "id": 139,
+          "type": "PARAMETER"
+        },
+        {
+          "scope": "logger",
+          "name": "warning",
+          "id": 142,
+          "type": "METHOD_CALL"
+        }
+      ],
+      "sourceId": 139,
+      "severity": "HIGH",
+      "sinkId": 142,
+      "sourceName": "data",
+      "vulnerability": "Potential taint flow from data to warning",
+      "sinkName": "warning"
+    }
+  ],
+  "timestamp": 1749070959295
+}

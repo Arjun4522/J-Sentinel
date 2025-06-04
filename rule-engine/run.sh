@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # OWASP Vulnerability Detector Runner Script
-# This script compiles and runs the OWASP vulnerability detector
+# This script runs the Python-based rule engine for vulnerability detection
 
 set -e  # Exit on any error
 
@@ -13,9 +13,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-JAVA_FILE="OwaspVulnerabilityDetector.java"
-CLASS_NAME="OwaspVulnerabilityDetector"
-DEFAULT_INPUT="taint_analysis.json"
+PYTHON_SCRIPT="detect.py"
+DEFAULT_INPUT="output"
 DEFAULT_OUTPUT="owasp_vulnerabilities.json"
 
 # Print colored output
@@ -35,77 +34,58 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Function to check if Java is installed
-check_java() {
-    if command -v java &> /dev/null && command -v javac &> /dev/null; then
-        JAVA_VERSION=$(java -version 2>&1 | head -n1 | cut -d'"' -f2)
-        print_success "Java found: $JAVA_VERSION"
+# Function to check if Python is installed
+check_python() {
+    if command -v python3 &> /dev/null; then
+        PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
+        print_success "Python found: $PYTHON_VERSION"
     else
-        print_error "Java not found. Please install Java 8 or higher."
+        print_error "Python3 not found. Please install Python 3.6 or higher."
         exit 1
     fi
 }
 
-# Function to check classpath
-check_classpath() {
-    if [ -z "$CLASSPATH" ]; then
-        print_warning "CLASSPATH not set. Setting basic classpath..."
-        export CLASSPATH=".:$HOME/.m2/repository/org/json/json/20240303/json-20240303.jar"
-    fi
-    print_status "Using CLASSPATH: $CLASSPATH"
-}
-
-# Function to compile Java code
-compile_detector() {
-    print_status "Compiling $JAVA_FILE..."
-    
-    if javac -cp "$CLASSPATH" "$JAVA_FILE" 2>/dev/null; then
-        print_success "Compilation successful"
+# Function to check Python dependencies
+check_dependencies() {
+    print_status "Checking Python dependencies..."
+    if python3 -c "import yaml" 2>/dev/null; then
+        print_success "PyYAML is installed"
     else
-        print_error "Compilation failed. Trying with downloaded JSON library..."
-        
-        # Download JSON library if not present
-        JSON_JAR="json-20240303.jar"
-        if [ ! -f "$JSON_JAR" ]; then
-            print_status "Downloading JSON library..."
-            curl -L -o "$JSON_JAR" "https://repo1.maven.org/maven2/org/json/json/20240303/json-20240303.jar"
-        fi
-        
-        # Retry compilation with downloaded JAR
-        if javac -cp ".:$JSON_JAR" "$JAVA_FILE"; then
-            export CLASSPATH=".:$JSON_JAR"
-            print_success "Compilation successful with downloaded library"
-        else
-            print_error "Compilation failed. Please check your Java code."
-            exit 1
-        fi
+        print_status "Installing PyYAML..."
+        pip3 install pyyaml
+        print_success "PyYAML installed"
     fi
 }
 
 # Function to run the detector
 run_detector() {
-    local input_file="${1:-$DEFAULT_INPUT}"
+    local input_folder="${1:-$DEFAULT_INPUT}"
     local output_file="${2:-$DEFAULT_OUTPUT}"
     
     print_status "Running OWASP Vulnerability Detector..."
-    print_status "Input file: $input_file"
+    print_status "Input folder: $input_folder"
     print_status "Output file: $output_file"
     
-    if [ ! -f "$input_file" ]; then
-        print_error "Input file '$input_file' not found!"
-        print_status "Please provide the taint analysis JSON file."
+    if [ ! -d "$input_folder" ]; then
+        print_error "Input folder '$input_folder' not found!"
+        print_status "Please provide the output folder containing JSON graph data."
+        exit 1
+    fi
+    
+    # Check for rules.yaml
+    if [ ! -f "rules.yaml" ]; then
+        print_error "rules.yaml not found in current directory!"
         exit 1
     fi
     
     # Run the detector
-    if java -cp "$CLASSPATH" "$CLASS_NAME" "$input_file" "$output_file"; then
+    if python3 "$PYTHON_SCRIPT" "$input_folder" "$output_file"; then
         print_success "Analysis completed successfully!"
         print_status "Results saved to: $output_file"
         
         # Show file sizes
-        INPUT_SIZE=$(du -h "$input_file" | cut -f1)
         OUTPUT_SIZE=$(du -h "$output_file" | cut -f1)
-        print_status "Input size: $INPUT_SIZE, Output size: $OUTPUT_SIZE"
+        print_status "Output size: $OUTPUT_SIZE"
         
     else
         print_error "Analysis failed. Please check the error messages above."
@@ -113,98 +93,25 @@ run_detector() {
     fi
 }
 
-# Function to create sample taint analysis file
-create_sample_input() {
-    print_status "Creating sample taint analysis file..."
-    
-    cat > "$DEFAULT_INPUT" << 'EOF'
-{
-  "scanId": "sample-scan-001",
-  "taintedPaths": [
-    {
-      "pathNodes": [
-        {
-          "name": "userInput",
-          "id": 1,
-          "type": "PARAMETER"
-        },
-        {
-          "scope": "logger",
-          "name": "info",
-          "id": 2,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 1,
-      "severity": "HIGH",
-      "sinkId": 2,
-      "sourceName": "userInput",
-      "vulnerability": "Potential taint flow from userInput to info",
-      "sinkName": "info"
-    },
-    {
-      "pathNodes": [
-        {
-          "name": "password",
-          "id": 3,
-          "type": "PARAMETER"
-        },
-        {
-          "scope": "logger",
-          "name": "debug",
-          "id": 4,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 3,
-      "severity": "HIGH",
-      "sinkId": 4,
-      "sourceName": "password",
-      "vulnerability": "Potential taint flow from password to debug",
-      "sinkName": "debug"
-    }
-  ],
-  "timestamp": 1748809181932
-}
-EOF
-    
-    print_success "Sample input created: $DEFAULT_INPUT"
-}
-
 # Function to show usage
 show_usage() {
-    echo "Usage: $0 [OPTIONS] [INPUT_FILE] [OUTPUT_FILE]"
+    echo "Usage: $0 [OPTIONS] [INPUT_FOLDER] [OUTPUT_FILE]"
     echo ""
     echo "Options:"
     echo "  -h, --help              Show this help message"
-    echo "  -s, --sample            Create sample input file"
-    echo "  -c, --compile-only      Only compile, don't run"
-    echo "  -r, --run-only          Only run (skip compilation)"
-    echo "  --clean                 Clean compiled files"
     echo ""
     echo "Arguments:"
-    echo "  INPUT_FILE              Taint analysis JSON file (default: $DEFAULT_INPUT)"
+    echo "  INPUT_FOLDER            Folder containing JSON graph data (default: $DEFAULT_INPUT)"
     echo "  OUTPUT_FILE             Output vulnerability report (default: $DEFAULT_OUTPUT)"
     echo ""
     echo "Examples:"
-    echo "  $0                                    # Use default files"
-    echo "  $0 my_taint.json my_report.json      # Use custom files"
-    echo "  $0 --sample                          # Create sample input"
-    echo "  $0 --compile-only                    # Just compile"
-}
-
-# Function to clean compiled files
-clean_files() {
-    print_status "Cleaning compiled files..."
-    rm -f *.class
-    print_success "Cleaned compiled files"
+    echo "  $0                                    # Use default folder and output"
+    echo "  $0 output my_report.json             # Use custom folder and output"
 }
 
 # Main execution
 main() {
-    local compile_only=false
-    local run_only=false
-    local input_file=""
+    local input_folder=""
     local output_file=""
     
     # Parse command line arguments
@@ -214,30 +121,14 @@ main() {
                 show_usage
                 exit 0
                 ;;
-            -s|--sample)
-                create_sample_input
-                exit 0
-                ;;
-            -c|--compile-only)
-                compile_only=true
-                shift
-                ;;
-            -r|--run-only)
-                run_only=true
-                shift
-                ;;
-            --clean)
-                clean_files
-                exit 0
-                ;;
             -*)
                 print_error "Unknown option: $1"
                 show_usage
                 exit 1
                 ;;
             *)
-                if [ -z "$input_file" ]; then
-                    input_file="$1"
+                if [ -z "$input_folder" ]; then
+                    input_folder="$1"
                 elif [ -z "$output_file" ]; then
                     output_file="$1"
                 else
@@ -251,7 +142,7 @@ main() {
     done
     
     # Set defaults if not provided
-    input_file="${input_file:-$DEFAULT_INPUT}"
+    input_folder="${input_folder:-$DEFAULT_INPUT}"
     output_file="${output_file:-$DEFAULT_OUTPUT}"
     
     # Print banner
@@ -261,17 +152,11 @@ main() {
     echo -e "${NC}"
     
     # Check prerequisites
-    check_java
-    check_classpath
+    check_python
+    check_dependencies
     
-    # Execute based on options
-    if [ "$run_only" = false ]; then
-        compile_detector
-    fi
-    
-    if [ "$compile_only" = false ]; then
-        run_detector "$input_file" "$output_file"
-    fi
+    # Execute
+    run_detector "$input_folder" "$output_file"
     
     print_success "Done!"
 }

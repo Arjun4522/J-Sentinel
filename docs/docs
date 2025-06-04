@@ -29,9 +29,9 @@ curl -u user:secret "http://localhost:8080/api/graph?scanId=<scan-ID>" -o output
 
 curl -u user:secret http://localhost:8080/api/health
 
-curl -u user:secret http://localhost:8080/api/cfg_extract?scanId=<scanId>
+curl -u user:secret http://localhost:8080/api/cfg?scanId=<scanId>
 
-curl -u user:secret http://localhost:8080/api/dfg_extract?scanId=<scanId>
+curl -u user:secret http://localhost:8080/api/dfgscanId=<scanId>
 
 curl -u user:secret http://localhost:8080/api/taint_analyse?scanId=<scanId>
 
