@@ -23,7 +23,7 @@ public class scanner {
 
     public static void main(String[] args) throws IOException {
         if (args.length < 1) {
-            System.out.println("Usage: java scanner_test <path-to-java-source> [--local] [--output path.json] [--endpoint url]");
+            System.out.println("Usage: java scanner <path-to-java-source> [--local] [--output path.json] [--endpoint url]");
             return;
         }
 
@@ -49,13 +49,6 @@ public class scanner {
 
         Map<Node, Integer> nodeIds = new HashMap<>();
         AtomicInteger nextId = new AtomicInteger(1);
-
-        JSONArray potentialLogInjections = new JSONArray();
-        JSONArray inefficientListOperations = new JSONArray();
-        JSONArray missingInputValidations = new JSONArray();
-        JSONArray constructorNamingIssues = new JSONArray();
-        JSONArray sensitiveDataExposures = new JSONArray();
-        JSONArray overlyBroadCatches = new JSONArray();
 
         try {
             sourceRoot.tryToParse().forEach(result -> {
@@ -86,21 +79,26 @@ public class scanner {
                             constructorNode.put("name", constructor.getNameAsString());
                             constructorNode.put("parameters", constructor.getParameters().size());
                             nodes.put(constructorNode);
-                            nodeIds.put(constructor, nextId.getAndIncrement());
+                            Integer constructorId = nextId.getAndIncrement();
+                            nodeIds.put(constructor, constructorId);
 
-                            edges.put(createEdge(nodeIds.get(cls), nodeIds.get(constructor), "CONTAINS"));
+                            edges.put(createEdge(nodeIds.get(cls), constructorId, "CONTAINS"));
 
-                            if (!constructor.getNameAsString().equals(cls.getNameAsString())) {
-                                JSONObject issue = new JSONObject();
-                                issue.put("constructorId", nodeIds.get(constructor));
-                                issue.put("className", cls.getNameAsString());
-                                issue.put("constructorName", constructor.getNameAsString());
-                                issue.put("message", "Constructor name does not match class name");
-                                constructorNamingIssues.put(issue);
-                            }
+                            Map<String, Integer> variableToNodeId = new HashMap<>();
+                            constructor.getParameters().forEach(param -> {
+                                JSONObject paramNode = new JSONObject();
+                                paramNode.put("id", nextId.get());
+                                paramNode.put("type", "PARAMETER");
+                                paramNode.put("name", param.getNameAsString());
+                                paramNode.put("dataType", param.getType().asString());
+                                nodes.put(paramNode);
+                                Integer paramId = nextId.getAndIncrement();
+                                nodeIds.put(param, paramId);
+                                edges.put(createEdge(constructorId, paramId, "DECLARES"));
+                                variableToNodeId.put(param.getNameAsString(), paramId);
+                            });
 
-                            analyzeMethodBody(constructor, nodeIds, nodes, edges, nextId, potentialLogInjections, 
-                                              inefficientListOperations, sensitiveDataExposures, overlyBroadCatches);
+                            analyzeMethodBody(constructor, nodeIds, nodes, edges, nextId, variableToNodeId);
                         });
 
                         cls.getMethods().forEach(method -> {
@@ -117,11 +115,7 @@ public class scanner {
                             edges.put(createEdge(nodeIds.get(cls), methodId, "CONTAINS"));
 
                             Map<String, Integer> variableToNodeId = new HashMap<>();
-                            List<String> paramNames = new ArrayList<>();
-                            List<String> nonPrimitiveParams = new ArrayList<>();
-                            List<String> stringOrCollectionParams = new ArrayList<>();
-                            
-                            for (Parameter param : method.getParameters()) {
+                            method.getParameters().forEach(param -> {
                                 JSONObject paramNode = new JSONObject();
                                 paramNode.put("id", nextId.get());
                                 paramNode.put("type", "PARAMETER");
@@ -131,52 +125,10 @@ public class scanner {
                                 Integer paramId = nextId.getAndIncrement();
                                 nodeIds.put(param, paramId);
                                 edges.put(createEdge(methodId, paramId, "DECLARES"));
-                                
                                 variableToNodeId.put(param.getNameAsString(), paramId);
-                                paramNames.add(param.getNameAsString());
-                                
-                                String paramType = param.getType().asString();
-                                if (!isPrimitiveType(paramType)) {
-                                    nonPrimitiveParams.add(param.getNameAsString());
-                                }
-                                if (paramType.equals("String") || isCollectionType(paramType)) {
-                                    stringOrCollectionParams.add(param.getNameAsString());
-                                }
-                            }
-
-                            Optional<BlockStmt> methodBody = method.getBody();
-                            methodBody.ifPresent(body -> {
-                                boolean foundNullCheck = false;
-                                boolean foundLengthCheck = false;
-                                for (String paramName : paramNames) {
-                                    foundNullCheck |= body.findAll(IfStmt.class).stream().anyMatch(ifStmt -> 
-                                        ifStmt.getCondition().toString().contains(paramName + " == null") ||
-                                        ifStmt.getCondition().toString().contains("null == " + paramName));
-                                    foundLengthCheck |= body.findAll(MethodCallExpr.class).stream().anyMatch(call ->
-                                        call.getNameAsString().equals("length") && call.toString().contains(paramName + ".length")) ||
-                                        body.findAll(MethodCallExpr.class).stream().anyMatch(call ->
-                                        call.getNameAsString().equals("isEmpty") && call.toString().contains(paramName + ".isEmpty"));
-                                }
-                                if (!nonPrimitiveParams.isEmpty() && !foundNullCheck) {
-                                    JSONObject issue = new JSONObject();
-                                    issue.put("methodId", methodId);
-                                    issue.put("methodName", method.getNameAsString());
-                                    issue.put("message", "Missing null check for parameters: " + String.join(", ", nonPrimitiveParams));
-                                    issue.put("suggestedFix", "Add null check: if (" + nonPrimitiveParams.get(0) + " == null) { throw new IllegalArgumentException(\"Parameter cannot be null\"); }");
-                                    missingInputValidations.put(issue);
-                                }
-                                if (!stringOrCollectionParams.isEmpty() && !foundLengthCheck) {
-                                    JSONObject issue = new JSONObject();
-                                    issue.put("methodId", methodId);
-                                    issue.put("methodName", method.getNameAsString());
-                                    issue.put("message", "Missing length/isEmpty check for parameters: " + String.join(", ", stringOrCollectionParams));
-                                    issue.put("suggestedFix", "Add validation: if (" + stringOrCollectionParams.get(0) + ".isEmpty()) { throw new IllegalArgumentException(\"Parameter cannot be empty\"); }");
-                                    missingInputValidations.put(issue);
-                                }
                             });
 
-                            analyzeMethodBody(method, nodeIds, nodes, edges, nextId, potentialLogInjections, 
-                                              inefficientListOperations, sensitiveDataExposures, overlyBroadCatches);
+                            analyzeMethodBody(method, nodeIds, nodes, edges, nextId, variableToNodeId);
                         });
 
                         cls.getFields().forEach(field -> {
@@ -212,13 +164,17 @@ public class scanner {
             JSONObject node = nodes.getJSONObject(i);
             String type = node.getString("type");
             switch (type) {
-                case "METHOD_CALL": methodCalls++; break;
+                case "METHOD_CALL":
+                case "OBJECT_CREATION":
+                case "TYPE_ARRAY_CALL":
+                case "TYPE_CATCH_CALL": methodCalls++; break;
                 case "ASSIGNMENT": assignments++; break;
                 case "STRING_LITERAL": stringLiterals++; break;
                 case "IF_STATEMENT":
                 case "FOR_LOOP":
                 case "WHILE_LOOP":
-                case "FOR_EACH_LOOP": controlFlows++; break;
+                case "FOR_EACH_LOOP":
+                case "TRY_CATCH_BLOCK": controlFlows++; break;
             }
         }
         for (int i = 0; i < nodes.length(); i++) {
@@ -235,32 +191,25 @@ public class scanner {
         stats.put("assignments", assignments);
         stats.put("stringLiterals", stringLiterals);
         stats.put("controlFlowNodes", controlFlows);
-        stats.put("potentialLogInjections", potentialLogInjections.length());
-        stats.put("inefficientListOperations", inefficientListOperations.length());
-        stats.put("missingInputValidations", missingInputValidations.length());
-        stats.put("constructorNamingIssues", constructorNamingIssues.length());
-        stats.put("sensitiveDataExposures", sensitiveDataExposures.length());
-        stats.put("overlyBroadCatches", overlyBroadCatches.length());
 
-        codeGraph.put("potentialLogInjections", potentialLogInjections);
-        codeGraph.put("inefficientListOperations", inefficientListOperations);
-        codeGraph.put("missingInputValidations", missingInputValidations);
-        codeGraph.put("constructorNamingIssues", constructorNamingIssues);
-        codeGraph.put("sensitiveDataExposures", sensitiveDataExposures);
-        codeGraph.put("overlyBroadCatches", overlyBroadCatches);
         codeGraph.put("statistics", stats);
 
         if (saveLocal) {
             saveGraphLocally(codeGraph);
         } else {
-            uploadGraph(codeGraph);
+            try {
+                uploadGraph(codeGraph);
+            } catch (IOException e) {
+                System.err.println("Upload failed: " + e.getMessage());
+                System.out.println("Saving graph locally as fallback...");
+                saveGraphLocally(codeGraph);
+            }
         }
     }
 
-    private static void analyzeMethodBody(CallableDeclaration<?> method, Map<Node, Integer> nodeIds, 
-                             JSONArray nodes, JSONArray edges, AtomicInteger nextId,
-                             JSONArray potentialLogInjections, JSONArray inefficientListOperations,
-                             JSONArray sensitiveDataExposures, JSONArray overlyBroadCatches) {
+    private static void analyzeMethodBody(CallableDeclaration<?> method, Map<Node, Integer> nodeIds,
+                                         JSONArray nodes, JSONArray edges, AtomicInteger nextId,
+                                         Map<String, Integer> variableToNodeId) {
         Integer methodId = nodeIds.get(method);
         if (methodId == null) return;
 
@@ -272,15 +221,6 @@ public class scanner {
         }
 
         body.ifPresent(b -> {
-            Map<String, Integer> variableToNodeId = new HashMap<>();
-            
-            method.getParameters().forEach(param -> {
-                Integer paramNodeId = nodeIds.get(param);
-                if (paramNodeId != null) {
-                    variableToNodeId.put(param.getNameAsString(), paramNodeId);
-                }
-            });
-
             b.findAll(VariableDeclarator.class).forEach(varDeclarator -> {
                 JSONObject varNode = new JSONObject();
                 varNode.put("id", nextId.get());
@@ -288,7 +228,7 @@ public class scanner {
                 varNode.put("name", varDeclarator.getNameAsString());
                 varNode.put("dataType", varDeclarator.getType().asString());
 
-                varDeclarator.getInitializer().ifPresent(init -> 
+                varDeclarator.getInitializer().ifPresent(init ->
                     varNode.put("initializer", init.toString()));
 
                 nodes.put(varNode);
@@ -315,114 +255,120 @@ public class scanner {
                 callNode.put("type", "METHOD_CALL");
                 callNode.put("name", methodCall.getNameAsString());
                 callNode.put("arguments", methodCall.getArguments().size());
-                methodCall.getScope().ifPresent(scope -> {
-                    callNode.put("scope", scope.toString());
-                });
+                methodCall.getScope().ifPresent(scope ->
+                    callNode.put("scope", scope.toString()));
                 nodes.put(callNode);
                 Integer callNodeId = nextId.getAndIncrement();
                 nodeIds.put(methodCall, callNodeId);
 
                 edges.put(createEdge(methodId, callNodeId, "INVOKES"));
 
-                methodCall.getArguments().forEach(arg -> {
-                    if (arg instanceof NameExpr) {
-                        String varName = ((NameExpr) arg).getNameAsString();
-                        Integer varNodeId = variableToNodeId.get(varName);
-                        if (varNodeId != null) {
-                            edges.put(createEdge(varNodeId, callNodeId, "DATA_FLOW"));
-                        }
-                    } else if (arg instanceof BinaryExpr) {
-                        BinaryExpr binaryExpr = (BinaryExpr) arg;
-                        binaryExpr.findAll(NameExpr.class).forEach(nameExpr -> {
-                            String varName = nameExpr.getNameAsString();
-                            Integer varNodeId = variableToNodeId.get(varName);
-                            if (varNodeId != null) {
-                                edges.put(createEdge(varNodeId, callNodeId, "DATA_FLOW"));
-                            }
-                        });
-                    } else if (arg instanceof MethodCallExpr) {
-                        MethodCallExpr nestedCall = (MethodCallExpr) arg;
-                        if (nestedCall.getScope().isPresent()) {
-                            Expression scope = nestedCall.getScope().get();
-                            if (scope instanceof NameExpr) {
-                                String scopeName = ((NameExpr) scope).getNameAsString();
-                                Integer scopeNodeId = variableToNodeId.get(scopeName);
-                                if (scopeNodeId != null) {
-                                    edges.put(createEdge(scopeNodeId, callNodeId, "DATA_FLOW"));
-                                }
-                            }
-                        }
-                    }
-                });
-
-                String methodName = methodCall.getNameAsString();
-                if (isLoggingMethod(methodName)) {
-                    for (Expression arg : methodCall.getArguments()) {
-                        if (containsVariableReference(arg, variableToNodeId)) {
-                            JSONObject issue = new JSONObject();
-                            issue.put("methodCallId", callNodeId);
-                            issue.put("methodName", method.getNameAsString());
-                            issue.put("message", "Potential log injection: " + methodName + " with variable content");
-                            issue.put("severity", getLogSeverity(methodName));
-                            issue.put("suggestedFix", "Sanitize input before logging, e.g., replaceAll(\"[\\n\\r]\", \"\")");
-                            potentialLogInjections.put(issue);
-                        }
-                    };
-                }
+                methodCall.getArguments().forEach(arg -> processArgument(arg, callNodeId, variableToNodeId, edges));
             });
 
-            processBinaryExpressions(b, methodId, nodes, edges, nextId, nodeIds);
-            processControlFlow(b, methodId, nodes, edges, nextId, nodeIds, inefficientListOperations, method);
+            b.findAll(ObjectCreationExpr.class).forEach(objCreation -> {
+                JSONObject objNode = new JSONObject();
+                objNode.put("id", nextId.get());
+                objNode.put("type", "OBJECT_CREATION");
+                objNode.put("className", objCreation.getType().asString());
+                objNode.put("arguments", objCreation.getArguments().size());
+                nodes.put(objNode);
+                Integer objNodeId = nextId.getAndIncrement();
+                nodeIds.put(objCreation, objNodeId);
+
+                edges.put(createEdge(methodId, objNodeId, "INVOKES"));
+
+                objCreation.getArguments().forEach(arg -> processArgument(arg, objNodeId, variableToNodeId, edges));
+            });
+
+            b.findAll(ArrayAccessExpr.class).forEach(arrayAccess -> {
+                JSONObject arrayNode = new JSONObject();
+                arrayNode.put("id", nextId.get());
+                arrayNode.put("type", "TYPE_ARRAY_CALL");
+                arrayNode.put("array", arrayAccess.getName().toString());
+                arrayNode.put("index", arrayAccess.getIndex().toString());
+                nodes.put(arrayNode);
+                Integer arrayId = nextId.getAndIncrement();
+                nodeIds.put(arrayAccess, arrayId);
+
+                edges.put(createEdge(methodId, arrayId, "INVOKES"));
+
+                arrayAccess.getName().findAll(NameExpr.class).forEach(name -> {
+                    String varName = name.getNameAsString();
+                    Integer varId = variableToNodeId.get(varName);
+                    if (varId != null) {
+                        edges.put(createEdge(varId, arrayId, "DATA_FLOW"));
+                    }
+                });
+            });
+
+            b.findAll(TryStmt.class).forEach(tryStmt -> {
+                JSONObject tryNode = new JSONObject();
+                tryNode.put("id", nextId.get());
+                tryNode.put("type", "TRY_CATCH_BLOCK");
+                tryNode.put("catchClausesCount", tryStmt.getCatchClauses().size());
+                tryNode.put("hasFinallyBlock", tryStmt.getFinallyBlock().isPresent());
+
+                JSONArray exceptionTypes = new JSONArray();
+                tryStmt.getCatchClauses().forEach(catchClause -> {
+                    String exceptionType = catchClause.getParameter().getType().asString();
+                    String exceptionName = catchClause.getParameter().getNameAsString();
+                    JSONObject paramNode = new JSONObject();
+                    paramNode.put("id", nextId.get());
+                    paramNode.put("type", "TYPE_CATCH_CALL");
+                    paramNode.put("name", exceptionName);
+                    paramNode.put("dataType", exceptionType);
+                    nodes.put(paramNode);
+                    Integer paramId = nextId.getAndIncrement();
+                    nodeIds.put(catchClause.getParameter(), paramId);
+                    variableToNodeId.put(exceptionName, paramId);
+                    edges.put(createEdge(tryNode.getInt("id"), paramId, "DECLARES"));
+                    exceptionTypes.put(exceptionType);
+                });
+                tryNode.put("exceptionTypes", exceptionTypes);
+
+                nodes.put(tryNode);
+                Integer tryNodeId = nextId.getAndIncrement();
+                nodeIds.put(tryStmt, tryNodeId);
+
+                edges.put(createEdge(methodId, tryNodeId, "CONTAINS_EXCEPTION_HANDLING"));
+            });
+
+            b.findAll(ReturnStmt.class).forEach(returnStmt -> {
+                JSONObject returnNode = new JSONObject();
+                returnNode.put("id", nextId.get());
+                returnNode.put("type", "RETURN_STATEMENT");
+                returnStmt.getExpression().ifPresent(expr ->
+                    returnNode.put("expression", expr.toString()));
+                nodes.put(returnNode);
+                Integer returnNodeId = nextId.getAndIncrement();
+                nodeIds.put(returnStmt, returnNodeId);
+
+                edges.put(createEdge(methodId, returnNodeId, "CONTAINS"));
+
+                returnStmt.getExpression().ifPresent(expr ->
+                    expr.findAll(NameExpr.class).forEach(nameExpr -> {
+                        String varName = nameExpr.getNameAsString();
+                        Integer sourceNodeId = variableToNodeId.get(varName);
+                        if (sourceNodeId != null) {
+                            edges.put(createEdge(sourceNodeId, returnNodeId, "DATA_FLOW"));
+                        }
+                    }));
+            });
+
+            b.findAll(BinaryExpr.class).forEach(binaryExpr ->
+                processBinaryExpression(binaryExpr, methodId, nodes, edges, nextId, nodeIds));
             processAssignments(b, methodId, nodes, edges, nextId, nodeIds, variableToNodeId);
             processFieldAccess(b, methodId, nodes, edges, nextId, nodeIds);
             processStringLiterals(b, methodId, nodes, edges, nextId, nodeIds);
-            processTryCatch(b, methodId, nodes, edges, nextId, nodeIds, sensitiveDataExposures, overlyBroadCatches, method, variableToNodeId);
-            processReturnStatements(b, methodId, nodes, edges, nextId, nodeIds);
+            processControlFlow(b, methodId, nodes, edges, nextId, nodeIds);
         });
     }
 
-    private static boolean isLoggingMethod(String methodName) {
-        return methodName.equals("println") || methodName.equals("print") ||
-               methodName.equals("info") || methodName.equals("debug") ||
-               methodName.equals("warn") || methodName.equals("warning") ||
-               methodName.equals("error") || methodName.equals("severe") ||
-               methodName.equals("log");
-    }
-
-    private static String getLogSeverity(String methodName) {
-        if (methodName.equals("println") || methodName.equals("print")) {
-            return "Low";
-        }
-        return "High";
-    }
-
-    private static boolean containsVariableReference(Expression expr, Map<String, Integer> variableToNodeId) {
-        if (expr instanceof BinaryExpr) {
-            BinaryExpr binaryExpr = (BinaryExpr) expr;
-            if (binaryExpr.getOperator() == BinaryExpr.Operator.PLUS) {
-                return binaryExpr.findAll(NameExpr.class).stream().anyMatch(nameExpr -> 
-                    variableToNodeId.containsKey(nameExpr.getNameAsString()));
-            }
-        }
-        return expr.findAll(NameExpr.class).stream().anyMatch(nameExpr -> 
-            variableToNodeId.containsKey(nameExpr.getNameAsString()));
-    }
-
-    private static boolean isPrimitiveType(String type) {
-        return type.equals("int") || type.equals("long") || type.equals("double") || 
-               type.equals("float") || type.equals("boolean") || type.equals("char") || 
-               type.equals("byte") || type.equals("short");
-    }
-
-    private static boolean isCollectionType(String type) {
-        return type.contains("List") || type.contains("Set") || type.contains("Map") || 
-               type.contains("Collection") || type.contains("ArrayList") || 
-               type.contains("HashMap") || type.contains("HashSet");
-    }
-
-    private static void processBinaryExpressions(BlockStmt body, Integer methodId, JSONArray nodes, 
-                                                JSONArray edges, AtomicInteger nextId, Map<Node, Integer> nodeIds) {
-        body.findAll(BinaryExpr.class).forEach(binaryExpr -> {
+    private static void processBinaryExpression(Node node, Integer parentId, JSONArray nodes,
+                                               JSONArray edges, AtomicInteger nextId, Map<Node, Integer> nodeIds) {
+        if (node instanceof BinaryExpr) {
+            BinaryExpr binaryExpr = (BinaryExpr) node;
             JSONObject exprNode = new JSONObject();
             exprNode.put("id", nextId.get());
             exprNode.put("type", "BINARY_EXPRESSION");
@@ -430,15 +376,52 @@ public class scanner {
             exprNode.put("leftOperand", binaryExpr.getLeft().toString());
             exprNode.put("rightOperand", binaryExpr.getRight().toString());
             nodes.put(exprNode);
-            nodeIds.put(binaryExpr, nextId.getAndIncrement());
+            Integer exprId = nextId.getAndIncrement();
+            nodeIds.put(binaryExpr, exprId);
 
-            edges.put(createEdge(methodId, nodeIds.get(binaryExpr), "CONTAINS_EXPRESSION"));
-        });
+            edges.put(createEdge(parentId, exprId, "CONTAINS_EXPRESSION"));
+
+            processBinaryExpression(binaryExpr.getLeft(), exprId, nodes, edges, nextId, nodeIds);
+            processBinaryExpression(binaryExpr.getRight(), exprId, nodes, edges, nextId, nodeIds);
+        }
     }
 
-    private static void processControlFlow(BlockStmt body, Integer methodId, JSONArray nodes, 
-                                          JSONArray edges, AtomicInteger nextId, Map<Node, Integer> nodeIds,
-                                          JSONArray inefficientListOperations, CallableDeclaration<?> method) {
+    private static void processArgument(Expression arg, Integer targetNodeId, Map<String, Integer> variableToNodeId, JSONArray edges) {
+        if (arg instanceof NameExpr) {
+            String varName = ((NameExpr) arg).getNameAsString();
+            Integer varNodeId = variableToNodeId.get(varName);
+            if (varNodeId != null) {
+                edges.put(createEdge(varNodeId, targetNodeId, "DATA_FLOW"));
+            }
+        } else if (arg instanceof BinaryExpr) {
+            BinaryExpr binaryExpr = (BinaryExpr) arg;
+            binaryExpr.findAll(NameExpr.class).forEach(nameExpr -> {
+                String varName = nameExpr.getNameAsString();
+                Integer varNodeId = variableToNodeId.get(varName);
+                if (varNodeId != null) {
+                    edges.put(createEdge(varNodeId, targetNodeId, "DATA_FLOW"));
+                }
+            });
+        } else if (arg instanceof MethodCallExpr) {
+            MethodCallExpr nestedCall = (MethodCallExpr) arg;
+            nestedCall.getScope().ifPresent(scope -> {
+                if (scope instanceof NameExpr) {
+                    String scopeName = ((NameExpr) scope).getNameAsString();
+                    Integer scopeNodeId = variableToNodeId.get(scopeName);
+                    if (scopeNodeId != null) {
+                        edges.put(createEdge(scopeNodeId, targetNodeId, "DATA_FLOW"));
+                    }
+                }
+            });
+            nestedCall.getArguments().forEach(nestedArg -> processArgument(nestedArg, targetNodeId, variableToNodeId, edges));
+        } else if (arg instanceof ObjectCreationExpr) {
+            ObjectCreationExpr nestedCreation = (ObjectCreationExpr) arg;
+            nestedCreation.getArguments().forEach(nestedArg -> processArgument(nestedArg, targetNodeId, variableToNodeId, edges));
+        }
+    }
+
+    private static void processControlFlow(BlockStmt body, Integer methodId, JSONArray nodes,
+                                          JSONArray edges, AtomicInteger nextId, Map<Node, Integer> nodeIds) {
         body.findAll(IfStmt.class).forEach(ifStmt -> {
             JSONObject ifNode = new JSONObject();
             ifNode.put("id", nextId.get());
@@ -455,25 +438,13 @@ public class scanner {
             JSONObject forNode = new JSONObject();
             forNode.put("id", nextId.get());
             forNode.put("type", "FOR_LOOP");
-            forStmt.getCompare().ifPresent(compare -> 
+            forStmt.getCompare().ifPresent(compare ->
                 forNode.put("condition", compare.toString()));
             nodes.put(forNode);
             Integer forId = nextId.getAndIncrement();
             nodeIds.put(forStmt, forId);
 
             edges.put(createEdge(methodId, forId, "CONTAINS_CONTROL_FLOW"));
-
-            forStmt.getBody().findAll(MethodCallExpr.class).forEach(call -> {
-                if (call.getNameAsString().equals("remove") && call.getArguments().size() == 1 && 
-                    call.getArguments().get(0).toString().equals("0")) {
-                    JSONObject issue = new JSONObject();
-                    issue.put("loopId", forId);
-                    issue.put("methodName", method.getNameAsString());
-                    issue.put("message", "Inefficient list operation: remove(0) in a for loop");
-                    issue.put("suggestedFix", "Use list.clear() to remove all elements efficiently");
-                    inefficientListOperations.put(issue);
-                }
-            });
         });
 
         body.findAll(WhileStmt.class).forEach(whileStmt -> {
@@ -486,18 +457,6 @@ public class scanner {
             nodeIds.put(whileStmt, whileId);
 
             edges.put(createEdge(methodId, whileId, "CONTAINS_CONTROL_FLOW"));
-
-            whileStmt.getBody().findAll(MethodCallExpr.class).forEach(call -> {
-                if (call.getNameAsString().equals("remove") && call.getArguments().size() == 1 && 
-                    call.getArguments().get(0).toString().equals("0")) {
-                    JSONObject issue = new JSONObject();
-                    issue.put("loopId", whileId);
-                    issue.put("methodName", method.getNameAsString());
-                    issue.put("message", "Inefficient list operation: remove(0) in a while loop");
-                    issue.put("suggestedFix", "Use list.clear() to remove all elements efficiently");
-                    inefficientListOperations.put(issue);
-                }
-            });
         });
 
         body.findAll(ForEachStmt.class).forEach(f -> {
@@ -511,22 +470,10 @@ public class scanner {
             nodeIds.put(f, forEachId);
 
             edges.put(createEdge(methodId, forEachId, "CONTAINS_CONTROL_FLOW"));
-
-            f.getBody().findAll(MethodCallExpr.class).forEach(call -> {
-                if (call.getNameAsString().equals("remove") && call.getArguments().size() == 1 && 
-                    call.getArguments().get(0).toString().equals("0")) {
-                    JSONObject issue = new JSONObject();
-                    issue.put("loopId", forEachId);
-                    issue.put("methodName", method.getNameAsString());
-                    issue.put("message", "Inefficient list operation: remove(0) in a for-each loop (may also cause ConcurrentModificationException)");
-                    issue.put("suggestedFix", "Use list.clear() or a different loop structure to remove elements");
-                    inefficientListOperations.put(issue);
-                }
-            });
         });
     }
 
-    private static void processAssignments(BlockStmt body, Integer methodId, JSONArray nodes, 
+    private static void processAssignments(BlockStmt body, Integer methodId, JSONArray nodes,
                                          JSONArray edges, AtomicInteger nextId, Map<Node, Integer> nodeIds,
                                          Map<String, Integer> variableToNodeId) {
         body.findAll(AssignExpr.class).forEach(assignExpr -> {
@@ -552,7 +499,7 @@ public class scanner {
         });
     }
 
-    private static void processFieldAccess(BlockStmt body, Integer methodId, JSONArray nodes, 
+    private static void processFieldAccess(BlockStmt body, Integer methodId, JSONArray nodes,
                                           JSONArray edges, AtomicInteger nextId, Map<Node, Integer> nodeIds) {
         body.findAll(FieldAccessExpr.class).forEach(fieldAccess -> {
             JSONObject fieldAccessNode = new JSONObject();
@@ -567,7 +514,7 @@ public class scanner {
         });
     }
 
-    private static void processStringLiterals(BlockStmt body, Integer methodId, JSONArray nodes, 
+    private static void processStringLiterals(BlockStmt body, Integer methodId, JSONArray nodes,
                                             JSONArray edges, AtomicInteger nextId, Map<Node, Integer> nodeIds) {
         body.findAll(StringLiteralExpr.class).forEach(stringLiteral -> {
             JSONObject stringNode = new JSONObject();
@@ -582,80 +529,7 @@ public class scanner {
         });
     }
 
-    private static void processTryCatch(BlockStmt body, Integer methodId, JSONArray nodes, 
-                                       JSONArray edges, AtomicInteger nextId, Map<Node, Integer> nodeIds,
-                                       JSONArray sensitiveDataExposures, JSONArray overlyBroadCatches,
-                                       CallableDeclaration<?> method, Map<String, Integer> variableToNodeId) {
-        body.findAll(TryStmt.class).forEach(tryStmt -> {
-            JSONObject tryNode = new JSONObject();
-            tryNode.put("id", nextId.get());
-            tryNode.put("type", "TRY_CATCH_BLOCK");
-            tryNode.put("catchClausesCount", tryStmt.getCatchClauses().size());
-            tryNode.put("hasFinallyBlock", tryStmt.getFinallyBlock().isPresent());
-
-            JSONArray exceptionTypes = new JSONArray();
-            tryStmt.getCatchClauses().forEach(catchClause -> {
-                String exceptionType = catchClause.getParameter().getType().asString();
-                String exceptionName = catchClause.getParameter().getNameAsString();
-                exceptionTypes.put(exceptionType);
-                variableToNodeId.put(exceptionName, nextId.getAndIncrement());
-
-                catchClause.getBody().findAll(MethodCallExpr.class).forEach(call -> {
-                    String callName = call.getNameAsString();
-                    if (isLoggingMethod(callName) || callName.equals("printStackTrace")) {
-                        boolean exposesSensitiveData = call.getArguments().stream().anyMatch(arg ->
-                            arg.toString().contains(exceptionName)) ||
-                            callName.equals("printStackTrace") ||
-                            call.getArguments().stream().anyMatch(arg ->
-                                arg instanceof MethodCallExpr mce &&
-                                mce.getNameAsString().equals("getMessage") &&
-                                mce.getScope().map(s -> s.toString().equals(exceptionName)).orElse(false));
-                        if (exposesSensitiveData) {
-                            JSONObject issue = new JSONObject();
-                            issue.put("catchBlockId", nodeIds.get(tryStmt));
-                            issue.put("methodName", method.getNameAsString());
-                            issue.put("message", "Sensitive data exposure: " + callName + " may leak exception details in catch block");
-                            issue.put("severity", "Medium");
-                            issue.put("suggestedFix", "Avoid logging exception details; use a generic error message instead");
-                            sensitiveDataExposures.put(issue);
-                        }
-                    }
-                });
-
-                if (exceptionType.equals("Exception") || exceptionType.equals("Throwable")) {
-                    JSONObject issue = new JSONObject();
-                    issue.put("tryCatchId", nodeIds.get(tryStmt));
-                    issue.put("methodName", method.getNameAsString());
-                    issue.put("message", "Overly broad catch: catching Exception or Throwable");
-                    issue.put("suggestedFix", "Catch specific exceptions instead of Exception or Throwable");
-                    overlyBroadCatches.put(issue);
-                }
-            });
-            tryNode.put("exceptionTypes", exceptionTypes);
-
-            nodes.put(tryNode);
-            nodeIds.put(tryStmt, nextId.getAndIncrement());
-
-            edges.put(createEdge(methodId, nodeIds.get(tryStmt), "CONTAINS_EXCEPTION_HANDLING"));
-        });
-    }
-
-    private static void processReturnStatements(BlockStmt body, Integer methodId, JSONArray nodes, 
-                                               JSONArray edges, AtomicInteger nextId, Map<Node, Integer> nodeIds) {
-        body.findAll(ReturnStmt.class).forEach(returnStmt -> {
-            JSONObject returnNode = new JSONObject();
-            returnNode.put("id", nextId.get());
-            returnNode.put("type", "RETURN_STATEMENT");
-            returnStmt.getExpression().ifPresent(expr ->
-                returnNode.put("expression", expr.toString()));
-            nodes.put(returnNode);
-            nodeIds.put(returnStmt, nextId.getAndIncrement());
-
-            edges.put(createEdge(methodId, nodeIds.get(returnStmt), "CONTAINS"));
-        });
-    }
-
-    private static void analyzeGlobalElements(CompilationUnit cu, Map<Node, Integer> nodeIds, 
+    private static void analyzeGlobalElements(CompilationUnit cu, Map<Node, Integer> nodeIds,
                                              JSONArray nodes, JSONArray edges, AtomicInteger nextId) {
         cu.getPackageDeclaration().ifPresent(pd -> {
             JSONObject packageNode = new JSONObject();
@@ -675,6 +549,7 @@ public class scanner {
             importNode.put("name", im.getNameAsString());
             importNode.put("isStatic", im.isStatic());
             importNode.put("isAsterisk", im.isAsterisk());
+            importNode.put("id", nextId.get());
             nodes.put(importNode);
             nodeIds.put(im, nextId.getAndIncrement());
 
@@ -692,26 +567,20 @@ public class scanner {
 
     private static void parseArguments(String[] args) {
         for (int i = 1; i < args.length; i++) {
-            switch (args[i]) {
-                case "--local":
-                    saveLocal = true;
-                    break;
-                case "--output":
-                    if (i + 1 < args.length) {
-                        outputPath = args[++i];
-                    }
-                    break;
-                case "--endpoint":
-                    if (i + 1 < args.length) {
-                        apiEndpoint = args[++i];
-                    }
-                    break;
+            if (args[i].equals("--local")) {
+                saveLocal = true;
+            } else if (args[i].equals("--output") && i + 1 < args.length) {
+                outputPath = args[++i];
+            } else if (args[i].equals("--endpoint") && i + 1 < args.length) {
+                apiEndpoint = args[++i];
             }
         }
     }
 
     private static void saveGraphLocally(JSONObject codeGraph) throws IOException {
-        try (FileWriter file = new FileWriter(outputPath)) {
+        File outputFile = new File(outputPath);
+        outputFile.getParentFile().mkdirs(); // Ensure parent directories exist
+        try (FileWriter file = new FileWriter(outputFile)) {
             file.write(codeGraph.toString(2));
             System.out.println("Code graph saved to: " + outputPath);
         }
@@ -723,7 +592,7 @@ public class scanner {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json");
-        conn.setRequestProperty("Authorization", "Basic " + 
+        conn.setRequestProperty("Authorization", "Basic " +
             Base64.getEncoder().encodeToString("user:secret".getBytes()));
         conn.setDoOutput(true);
 
