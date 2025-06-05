@@ -1,417 +1,326 @@
 {
   "nodes": [
     {
-      "dataType": "String",
-      "name": "filePath",
+      "dataType": "HttpServletRequest",
+      "name": "req",
       "id": 4,
       "type": "PARAMETER"
     },
     {
-      "dataType": "BufferedReader",
-      "name": "reader",
+      "dataType": "HttpServletResponse",
+      "name": "res",
       "id": 5,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "new BufferedReader(new FileReader(filePath))"
-    },
-    {
-      "dataType": "String",
-      "name": "line",
-      "id": 6,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "reader.readLine()"
-    },
-    {
-      "scope": "reader",
-      "name": "readLine",
-      "arguments": 0,
-      "id": 7,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "info",
-      "arguments": 1,
-      "id": 8,
-      "type": "METHOD_CALL"
-    },
-    {
-      "name": "writeToLogFile",
-      "arguments": 1,
-      "id": 9,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "severe",
-      "arguments": 1,
-      "id": 10,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "e",
-      "name": "getMessage",
-      "arguments": 0,
-      "id": 11,
-      "type": "METHOD_CALL"
-    },
-    {
-      "dataType": "String",
-      "name": "content",
-      "id": 21,
       "type": "PARAMETER"
     },
     {
-      "dataType": "PrintWriter",
-      "name": "writer",
-      "id": 22,
+      "dataType": "String",
+      "name": "userInput",
+      "id": 6,
       "type": "LOCAL_VARIABLE",
-      "initializer": "new PrintWriter(new FileWriter(\"output.log\", true))"
+      "initializer": "req.getParameter(\"input\")"
     },
     {
-      "scope": "writer",
+      "dataType": "Connection",
+      "name": "conn",
+      "id": 7,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "getConnection()"
+    },
+    {
+      "dataType": "Statement",
+      "name": "stmt",
+      "id": 8,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "conn.createStatement()"
+    },
+    {
+      "dataType": "String",
+      "name": "sql",
+      "id": 9,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "\"SELECT * FROM users WHERE username = '\" + userInput + \"'\""
+    },
+    {
+      "dataType": "PreparedStatement",
+      "name": "ps",
+      "id": 10,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "conn.prepareStatement(\"SELECT * FROM users WHERE username = ?\")"
+    },
+    {
+      "dataType": "FileWriter",
+      "name": "fw",
+      "id": 11,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new FileWriter(\"files/\" + userInput)"
+    },
+    {
+      "dataType": "ObjectInputStream",
+      "name": "ois",
+      "id": 12,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new ObjectInputStream(new ByteArrayInputStream(userInput.getBytes()))"
+    },
+    {
+      "dataType": "Object",
+      "name": "o",
+      "id": 13,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "ois.readObject()"
+    },
+    {
+      "dataType": "String",
+      "name": "cleanInput",
+      "id": 14,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "sanitize(userInput)"
+    },
+    {
+      "dataType": "Statement",
+      "name": "safeStmt",
+      "id": 15,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "conn.createStatement()"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 16,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "System.out",
       "name": "println",
       "arguments": 1,
+      "id": 17,
+      "type": "METHOD_CALL"
+    },
+    {
+      "name": "getConnection",
+      "arguments": 0,
+      "id": 18,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "conn",
+      "name": "createStatement",
+      "arguments": 0,
+      "id": 19,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "stmt",
+      "name": "executeQuery",
+      "arguments": 1,
+      "id": 20,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "conn",
+      "name": "prepareStatement",
+      "arguments": 1,
+      "id": 21,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "ps",
+      "name": "setString",
+      "arguments": 2,
+      "id": 22,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "ps",
+      "name": "executeQuery",
+      "arguments": 0,
       "id": 23,
       "type": "METHOD_CALL"
     },
     {
-      "scope": "logger",
-      "name": "warning",
+      "scope": "Runtime.getRuntime()",
+      "name": "exec",
       "arguments": 1,
       "id": 24,
       "type": "METHOD_CALL"
     },
     {
-      "scope": "e",
-      "name": "getMessage",
+      "scope": "Runtime",
+      "name": "getRuntime",
       "arguments": 0,
       "id": 25,
       "type": "METHOD_CALL"
     },
     {
+      "scope": "fw",
+      "name": "write",
+      "arguments": 1,
+      "id": 26,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "fw",
+      "name": "close",
+      "arguments": 0,
+      "id": 27,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "Class",
+      "name": "forName",
+      "arguments": 1,
+      "id": 28,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "userInput",
+      "name": "getBytes",
+      "arguments": 0,
+      "id": 29,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "ois",
+      "name": "readObject",
+      "arguments": 0,
+      "id": 30,
+      "type": "METHOD_CALL"
+    },
+    {
+      "name": "methodSink",
+      "arguments": 1,
+      "id": 31,
+      "type": "METHOD_CALL"
+    },
+    {
+      "name": "directFlow",
+      "arguments": 1,
+      "id": 32,
+      "type": "METHOD_CALL"
+    },
+    {
+      "name": "sanitize",
+      "arguments": 1,
+      "id": 33,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "conn",
+      "name": "createStatement",
+      "arguments": 0,
+      "id": 34,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "safeStmt",
+      "name": "executeQuery",
+      "arguments": 1,
+      "id": 35,
+      "type": "METHOD_CALL"
+    },
+    {
       "dataType": "String[]",
       "name": "args",
-      "id": 34,
+      "id": 64,
       "type": "PARAMETER"
     },
     {
-      "dataType": "FileReadTaintTest",
-      "name": "test",
-      "id": 35,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "new FileReadTaintTest()"
-    },
-    {
       "dataType": "String",
-      "name": "path",
-      "id": 36,
+      "name": "cliInput",
+      "id": 65,
       "type": "LOCAL_VARIABLE",
-      "initializer": "args.length > 0 ? args[0] : \"input.txt\""
+      "initializer": "args[0]"
     },
     {
-      "scope": "test",
-      "name": "readAndProcess",
+      "scope": "new TaintTestSuite()",
+      "name": "sink",
       "arguments": 1,
-      "id": 37,
-      "type": "METHOD_CALL"
-    },
-    {
-      "dataType": "String",
-      "name": "userInput",
-      "id": 48,
-      "type": "PARAMETER"
-    },
-    {
-      "dataType": "BufferedReader",
-      "name": "reader",
-      "id": 49,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "new BufferedReader(new InputStreamReader(System.in))"
-    },
-    {
-      "dataType": "String",
-      "name": "line",
-      "id": 50,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "reader.readLine()"
-    },
-    {
-      "scope": "logger",
-      "name": "info",
-      "arguments": 1,
-      "id": 51,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "reader",
-      "name": "readLine",
-      "arguments": 0,
-      "id": 52,
-      "type": "METHOD_CALL"
-    },
-    {
-      "name": "process",
-      "arguments": 1,
-      "id": 53,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "severe",
-      "arguments": 1,
-      "id": 54,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "ex",
-      "name": "getMessage",
-      "arguments": 0,
-      "id": 55,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "info",
-      "arguments": 1,
-      "id": 56,
+      "id": 66,
       "type": "METHOD_CALL"
     },
     {
       "dataType": "String",
       "name": "input",
-      "id": 68,
+      "id": 70,
       "type": "PARAMETER"
     },
     {
-      "scope": "\"start\"",
-      "name": "equals",
-      "arguments": 1,
-      "id": 69,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "info",
-      "arguments": 1,
-      "id": 70,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "warning",
+      "scope": "System.out",
+      "name": "println",
       "arguments": 1,
       "id": 71,
       "type": "METHOD_CALL"
     },
     {
-      "dataType": "String[]",
-      "name": "args",
-      "id": 79,
-      "type": "PARAMETER"
+      "scope": "Runtime.getRuntime()",
+      "name": "exec",
+      "arguments": 1,
+      "id": 72,
+      "type": "METHOD_CALL"
     },
     {
-      "dataType": "SimpleTest",
-      "name": "test",
+      "scope": "Runtime",
+      "name": "getRuntime",
+      "arguments": 0,
+      "id": 73,
+      "type": "METHOD_CALL"
+    },
+    {
+      "dataType": "String",
+      "name": "data",
       "id": 80,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "new SimpleTest()"
-    },
-    {
-      "scope": "test",
-      "name": "run",
-      "arguments": 1,
-      "id": 81,
-      "type": "METHOD_CALL"
-    },
-    {
-      "dataType": "String",
-      "name": "userInput",
-      "id": 92,
       "type": "PARAMETER"
     },
     {
       "dataType": "String",
-      "name": "sanitized",
-      "id": 93,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "userInput.replaceAll(\"[^a-zA-Z0-9]\", \"\")"
+      "name": "val",
+      "id": 83,
+      "type": "PARAMETER"
     },
     {
-      "scope": "userInput",
-      "name": "isEmpty",
+      "scope": "Runtime.getRuntime()",
+      "name": "exec",
+      "arguments": 1,
+      "id": 84,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "Runtime",
+      "name": "getRuntime",
       "arguments": 0,
-      "id": 94,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "info",
-      "arguments": 1,
-      "id": 95,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "userInput",
-      "name": "replaceAll",
-      "arguments": 2,
-      "id": 96,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "sanitized",
-      "name": "length",
-      "arguments": 0,
-      "id": 97,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "info",
-      "arguments": 1,
-      "id": 98,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "warning",
-      "arguments": 1,
-      "id": 99,
-      "type": "METHOD_CALL"
-    },
-    {
-      "dataType": "String[]",
-      "name": "args",
-      "id": 113,
-      "type": "PARAMETER"
-    },
-    {
-      "dataType": "SafeInputTest",
-      "name": "test",
-      "id": 114,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "new SafeInputTest()"
-    },
-    {
-      "dataType": "String",
-      "name": "input",
-      "id": 115,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "args.length > 0 ? args[0] : \"\""
-    },
-    {
-      "scope": "test",
-      "name": "processSafeInput",
-      "arguments": 1,
-      "id": 116,
-      "type": "METHOD_CALL"
-    },
-    {
-      "dataType": "String",
-      "name": "userData",
-      "id": 126,
-      "type": "PARAMETER"
-    },
-    {
-      "dataType": "String",
-      "name": "processed",
-      "id": 127,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "transform(userData)"
-    },
-    {
-      "name": "transform",
-      "arguments": 1,
-      "id": 128,
-      "type": "METHOD_CALL"
-    },
-    {
-      "name": "logData",
-      "arguments": 1,
-      "id": 129,
+      "id": 85,
       "type": "METHOD_CALL"
     },
     {
       "dataType": "String",
       "name": "input",
-      "id": 131,
+      "id": 89,
       "type": "PARAMETER"
     },
     {
       "scope": "input",
-      "name": "toUpperCase",
-      "arguments": 0,
-      "id": 132,
+      "name": "replaceAll",
+      "arguments": 2,
+      "id": 90,
       "type": "METHOD_CALL"
     },
     {
-      "dataType": "String",
-      "name": "data",
-      "id": 139,
-      "type": "PARAMETER"
-    },
-    {
-      "scope": "logger",
-      "name": "info",
-      "arguments": 1,
-      "id": 140,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "data",
-      "name": "length",
-      "arguments": 0,
-      "id": 141,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "logger",
-      "name": "warning",
-      "arguments": 1,
-      "id": 142,
-      "type": "METHOD_CALL"
-    },
-    {
-      "dataType": "String[]",
-      "name": "args",
-      "id": 150,
-      "type": "PARAMETER"
-    },
-    {
-      "dataType": "CrossMethodTaintTest",
-      "name": "test",
-      "id": 151,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "new CrossMethodTaintTest()"
-    },
-    {
-      "dataType": "String",
-      "name": "data",
-      "id": 152,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "args.length > 0 ? args[0] : null"
-    },
-    {
-      "scope": "test",
-      "name": "start",
-      "arguments": 1,
-      "id": 153,
+      "scope": "DriverManager",
+      "name": "getConnection",
+      "arguments": 3,
+      "id": 95,
       "type": "METHOD_CALL"
     }
   ],
-  "scanId": "505f3a22-e96b-400e-b70c-b5e41b1e1a4a",
+  "scanId": "377fbf18-8e5d-4da0-b0b9-0d91497ac6eb",
   "edges": [
     {
       "source": 4,
       "type": "DATA_FLOW",
-      "target": 5
-    },
-    {
-      "source": 5,
-      "type": "DATA_FLOW",
       "target": 6
     },
     {
-      "source": 6,
+      "source": 7,
       "type": "DATA_FLOW",
       "target": 8
     },
@@ -421,119 +330,134 @@
       "target": 9
     },
     {
-      "source": 21,
+      "source": 7,
       "type": "DATA_FLOW",
-      "target": 23
+      "target": 10
     },
     {
-      "source": 34,
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 11
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 12
+    },
+    {
+      "source": 12,
+      "type": "DATA_FLOW",
+      "target": 13
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 14
+    },
+    {
+      "source": 7,
+      "type": "DATA_FLOW",
+      "target": 15
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 17
+    },
+    {
+      "source": 9,
+      "type": "DATA_FLOW",
+      "target": 20
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 22
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 24
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 28
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 31
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 32
+    },
+    {
+      "source": 6,
+      "type": "DATA_FLOW",
+      "target": 33
+    },
+    {
+      "source": 14,
+      "type": "DATA_FLOW",
+      "target": 35
+    },
+    {
+      "source": 6,
       "type": "DATA_FLOW",
       "target": 36
     },
     {
-      "source": 34,
-      "type": "DATA_FLOW",
-      "target": 36
-    },
-    {
-      "source": 36,
+      "source": 6,
       "type": "DATA_FLOW",
       "target": 37
     },
     {
-      "source": 49,
+      "source": 6,
       "type": "DATA_FLOW",
-      "target": 50
+      "target": 38
     },
     {
-      "source": 48,
+      "source": 64,
       "type": "DATA_FLOW",
-      "target": 51
+      "target": 65
     },
     {
-      "source": 50,
+      "source": 65,
       "type": "DATA_FLOW",
-      "target": 53
+      "target": 66
     },
     {
-      "source": 68,
+      "source": 64,
       "type": "DATA_FLOW",
-      "target": 69
+      "target": 68
     },
     {
-      "source": 68,
-      "type": "DATA_FLOW",
-      "target": 70
-    },
-    {
-      "source": 68,
+      "source": 70,
       "type": "DATA_FLOW",
       "target": 71
     },
     {
-      "source": 92,
+      "source": 70,
       "type": "DATA_FLOW",
-      "target": 93
+      "target": 72
     },
     {
-      "source": 93,
+      "source": 80,
       "type": "DATA_FLOW",
-      "target": 98
+      "target": 81
     },
     {
-      "source": 113,
+      "source": 83,
       "type": "DATA_FLOW",
-      "target": 115
+      "target": 84
     },
     {
-      "source": 113,
+      "source": 89,
       "type": "DATA_FLOW",
-      "target": 115
-    },
-    {
-      "source": 115,
-      "type": "DATA_FLOW",
-      "target": 116
-    },
-    {
-      "source": 126,
-      "type": "DATA_FLOW",
-      "target": 127
-    },
-    {
-      "source": 126,
-      "type": "DATA_FLOW",
-      "target": 128
-    },
-    {
-      "source": 127,
-      "type": "DATA_FLOW",
-      "target": 129
-    },
-    {
-      "source": 139,
-      "type": "DATA_FLOW",
-      "target": 140
-    },
-    {
-      "source": 139,
-      "type": "DATA_FLOW",
-      "target": 142
-    },
-    {
-      "source": 150,
-      "type": "DATA_FLOW",
-      "target": 152
-    },
-    {
-      "source": 150,
-      "type": "DATA_FLOW",
-      "target": 152
-    },
-    {
-      "source": 152,
-      "type": "DATA_FLOW",
-      "target": 153
+      "target": 91
     }
   ]
 }

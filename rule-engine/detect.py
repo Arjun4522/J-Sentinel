@@ -5,6 +5,7 @@ from typing import List, Dict, Any
 import uuid
 from datetime import datetime
 import sys
+import re
 
 class VulnerabilityRule:
     def __init__(self, rule_data: Dict[str, Any]):
@@ -53,6 +54,7 @@ class RuleEngine:
         self.confidence_factors = config.get("risk_assessment", {}).get("confidence_factors", {})
         self.sensitive_data_patterns = config.get("pattern_extensions", {}).get("sensitive_data_patterns", {})
         self.sanitization_functions = config.get("pattern_extensions", {}).get("sanitization_functions", {})
+        self.context_multipliers = config.get("pattern_extensions", {}).get("context_rules", {})
 
     def load_rules(self, rules_file: str) -> List[VulnerabilityRule]:
         with open(rules_file, "r") as f:
@@ -81,7 +83,25 @@ class RuleEngine:
                 if finding:
                     findings.append(finding)
 
+        # Apply false-positive filters
+        findings = self.apply_false_positive_filters(findings, codegraph)
         return findings
+
+    def apply_false_positive_filters(self, findings: List[VulnerabilityFinding], codegraph: Dict[str, Any]) -> List[VulnerabilityFinding]:
+        filtered_findings = []
+        for finding in findings:
+            # Skip findings for irrelevant categories (e.g., SQL/Command Injection without database/command sinks)
+            if finding.owasp_category == "A03:2021" and finding.rule_id in ["OWASP-A03-001", "OWASP-A03-003"]:
+                sink_name = finding.taint_path["sinkName"].lower()
+                if not any(pattern in sink_name for pattern in ["execute", "query", "createQuery", "prepareStatement", "Runtime.exec", "ProcessBuilder", "executeCommand", "system"]):
+                    continue
+            # Skip deserialization/command execution findings without specific sinks
+            if finding.owasp_category in ["A06:2021", "A08:2021"]:
+                sink_name = finding.taint_path["sinkName"].lower()
+                if not any(pattern in sink_name for pattern in ["readObject", "deserialize", "fromXML", "fromJSON", "eval", "compile", "loadClass", "invoke"]):
+                    continue
+            filtered_findings.append(finding)
+        return filtered_findings
 
     def evaluate_rule(
         self, rule: VulnerabilityRule, taint_path: Dict[str, Any], codegraph: Dict[str, Any]
@@ -110,6 +130,7 @@ class RuleEngine:
         sink_type = sink_node.get("type", "")
         sink_scope = sink_node.get("scope", "").lower()
 
+        # Enhanced sink matching logic
         sink_matches = False
         for name in rule.sink_names:
             if name.lower() in sink_name:
@@ -131,7 +152,7 @@ class RuleEngine:
                 sink_matches = True
                 break
 
-        if rule.sink_types and sink_type in rule.sink_types:
+        if not sink_matches and rule.sink_types and sink_type in rule.sink_types:
             confidence += 0.2
             match_reasons.append(f"Sink type matches: {sink_type}")
             sink_matches = True
@@ -144,28 +165,54 @@ class RuleEngine:
         if not sink_matches:
             return None
 
-        # Check path constraints
+        # Enhanced sanitization detection
         sanitization_found = False
         for node in taint_path["pathNodes"]:
             node_name = node.get("name", "").lower()
+            
+            # Check against path constraints
             for constraint in rule.path_constraints:
                 not_contains = constraint.get("not_contains", [])
                 if isinstance(not_contains, str):
                     not_contains = [not_contains]
                 for sanitizer in not_contains:
                     if sanitizer.lower() in node_name:
-                        confidence *= 0.3
+                        confidence *= 0.2  # Stronger reduction for sanitization
                         match_reasons.append(f"Sanitization detected: {sanitizer}")
                         sanitization_found = True
                         break
+            
+            # Check against sanitization functions with regex for specific patterns
+            for category, functions in self.sanitization_functions.items():
+                for func in functions:
+                    # Check for method calls or variable names indicating sanitization
+                    if re.search(rf'\b{func.lower()}\b|\bsanitized\b', node_name):
+                        confidence *= 0.2  # Stronger reduction for sanitization
+                        match_reasons.append(f"Sanitization function detected: {func} ({category})")
+                        sanitization_found = True
+                        break
 
-        # Check sensitive data
+        # Adjust severity for logging-related issues
+        if rule.owasp_category == "A03:2021" and rule.rule_id == "OWASP-A03-002":  # Log Injection/Forging
+            if not sanitization_found:
+                rule.severity = "MEDIUM"  # Default to Medium unless sensitive data is detected
+            else:
+                rule.severity = "LOW"  # Downgrade to Low if sanitized
+
+        # Enhanced sensitive data detection
         for category, patterns in self.sensitive_data_patterns.items():
             for pattern in patterns:
                 if pattern.lower() in source_name:
                     confidence += 0.2
                     match_reasons.append(f"Sensitive data pattern detected: {pattern} ({category})")
+                    if rule.owasp_category == "A03:2021" and rule.rule_id == "OWASP-A03-002":
+                        rule.severity = "HIGH"  # Upgrade to High for sensitive data in logs
                     break
+
+        # Apply context multiplier
+        context = codegraph.get("context", "general")
+        context_multiplier = next((c["multiplier"] for c in self.context_multipliers if c["context"] == context), 1.0)
+        confidence *= context_multiplier
 
         # Apply path complexity
         path_length = len(taint_path["pathNodes"])
@@ -197,20 +244,20 @@ class RuleEngine:
 
     def generate_remediation(self, rule: VulnerabilityRule) -> str:
         remediation_map = {
-            "OWASP-A03-002": "Sanitize user input before logging. Use structured logging with parameterized messages. Consider excluding sensitive data from logs.",
-            "OWASP-A02-001": "Encrypt or hash sensitive data before logging. Implement data classification and masking policies.",
-            "OWASP-A03-001": "Use parameterized queries or prepared statements. Implement input validation and SQL injection prevention measures.",
-            "OWASP-A03-003": "Validate and sanitize all user input. Use whitelisting for allowed commands. Consider safer alternatives to system commands.",
-            "OWASP-A01-002": "Implement proper authorization checks. Validate user permissions before accessing objects. Use indirect object references.",
-            "OWASP-A01-001": "Implement authorization checks before sensitive operations. Use role-based access control.",
-            "OWASP-A02-002": "Encrypt sensitive data before storage. Use strong cryptographic algorithms.",
-            "OWASP-A04-001": "Implement robust input validation for all user inputs. Use whitelisting where possible.",
-            "OWASP-A05-001": "Disable debug logging in production. Mask sensitive information in logs.",
-            "OWASP-A06-001": "Validate and sanitize input before deserialization. Use safe deserialization libraries.",
+            "OWASP-A03-002": "Sanitize user input before logging using methods like replaceAll for special characters. Use structured logging with parameterized messages. Exclude sensitive data from logs.",
+            "OWASP-A02-001": "Encrypt or hash sensitive data before logging. Implement data classification and masking policies. Avoid logging PII or credentials.",
+            "OWASP-A03-001": "Use parameterized queries or prepared statements for SQL operations. Implement input validation and SQL injection prevention measures.",
+            "OWASP-A03-003": "Validate and sanitize all user input for system commands. Use whitelisting for allowed commands. Avoid Runtime.exec or ProcessBuilder.",
+            "OWASP-A01-001": "Implement role-based access control (RBAC). Validate user permissions before sensitive operations.",
+            "OWASP-A01-002": "Use indirect object references. Validate user ownership of resources before access.",
+            "OWASP-A02-002": "Encrypt sensitive data before storage using strong algorithms (e.g., AES-256). Avoid plain-text storage.",
+            "OWASP-A04-001": "Implement robust input validation and whitelisting for all user inputs. Use secure coding practices.",
+            "OWASP-A05-001": "Disable debug and trace logging in production. Mask sensitive information in logs.",
+            "OWASP-A06-001": "Validate and sanitize input before deserialization. Use safe deserialization libraries like Jackson with strict type checking.",
             "OWASP-A07-001": "Use secure password hashing (e.g., bcrypt, Argon2). Avoid storing plain-text passwords.",
-            "OWASP-A08-001": "Avoid dynamic code execution. Validate and sanitize all inputs used in code execution.",
-            "OWASP-A09-001": "Implement comprehensive security logging for sensitive operations. Ensure logs are tamper-proof.",
-            "OWASP-A10-001": "Validate and whitelist URLs for server-side requests. Implement network-level protections.",
+            "OWASP-A08-001": "Avoid dynamic code execution (e.g., eval, compile). Validate and sanitize inputs used in code execution paths.",
+            "OWASP-A09-001": "Implement tamper-proof security logging for sensitive operations. Ensure logs capture sufficient context for auditing.",
+            "OWASP-A10-001": "Whitelist allowed URLs for server-side requests. Implement network-level protections to prevent SSRF.",
         }
         return remediation_map.get(rule.rule_id, "Review the identified vulnerability and implement appropriate security controls.")
 
@@ -251,7 +298,7 @@ class RuleEngine:
             },
             "findings": findings_json,
             "timestamp": int(datetime.now().timestamp() * 1000),
-            "analyzer": "Python Rule Engine v1.0",
+            "analyzer": "Python Rule Engine v1.2",  # Updated version
         }
 
     def print_summary(self, findings: List[VulnerabilityFinding]):

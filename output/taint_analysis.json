@@ -1,189 +1,115 @@
 {
-  "scanId": "505f3a22-e96b-400e-b70c-b5e41b1e1a4a",
+  "scanId": "377fbf18-8e5d-4da0-b0b9-0d91497ac6eb",
   "taintedPaths": [
     {
       "pathNodes": [
         {
-          "name": "filePath",
+          "name": "req",
           "id": 4,
           "type": "PARAMETER"
         },
         {
-          "name": "reader",
-          "id": 5,
-          "type": "LOCAL_VARIABLE"
-        },
-        {
-          "name": "line",
+          "name": "userInput",
           "id": 6,
           "type": "LOCAL_VARIABLE"
         },
         {
-          "scope": "logger",
-          "name": "info",
-          "id": 8,
+          "scope": "System.out",
+          "name": "println",
+          "id": 17,
           "type": "METHOD_CALL"
         }
       ],
       "sourceId": 4,
       "severity": "HIGH",
-      "sinkId": 8,
-      "sourceName": "filePath",
-      "vulnerability": "Potential taint flow from filePath to info",
-      "sinkName": "info"
-    },
-    {
-      "pathNodes": [
-        {
-          "name": "content",
-          "id": 21,
-          "type": "PARAMETER"
-        },
-        {
-          "scope": "writer",
-          "name": "println",
-          "id": 23,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 21,
-      "severity": "HIGH",
-      "sinkId": 23,
-      "sourceName": "content",
-      "vulnerability": "Potential taint flow from content to println",
+      "sinkId": 17,
+      "sourceName": "req",
+      "vulnerability": "Potential taint flow from req to println",
       "sinkName": "println"
     },
     {
       "pathNodes": [
         {
+          "name": "req",
+          "id": 4,
+          "type": "PARAMETER"
+        },
+        {
           "name": "userInput",
-          "id": 48,
-          "type": "PARAMETER"
+          "id": 6,
+          "type": "LOCAL_VARIABLE"
         },
         {
-          "scope": "logger",
-          "name": "info",
-          "id": 51,
+          "name": "cleanInput",
+          "id": 14,
+          "type": "LOCAL_VARIABLE"
+        },
+        {
+          "scope": "safeStmt",
+          "name": "executeQuery",
+          "id": 35,
           "type": "METHOD_CALL"
         }
       ],
-      "sourceId": 48,
+      "sourceId": 4,
       "severity": "HIGH",
-      "sinkId": 51,
-      "sourceName": "userInput",
-      "vulnerability": "Potential taint flow from userInput to info",
-      "sinkName": "info"
+      "sinkId": 35,
+      "sourceName": "req",
+      "vulnerability": "Potential taint flow from req to executeQuery",
+      "sinkName": "executeQuery"
+    },
+    {
+      "pathNodes": [
+        {
+          "name": "req",
+          "id": 4,
+          "type": "PARAMETER"
+        },
+        {
+          "name": "userInput",
+          "id": 6,
+          "type": "LOCAL_VARIABLE"
+        },
+        {
+          "name": "sql",
+          "id": 9,
+          "type": "LOCAL_VARIABLE"
+        },
+        {
+          "scope": "stmt",
+          "name": "executeQuery",
+          "id": 20,
+          "type": "METHOD_CALL"
+        }
+      ],
+      "sourceId": 4,
+      "severity": "HIGH",
+      "sinkId": 20,
+      "sourceName": "req",
+      "vulnerability": "Potential taint flow from req to executeQuery",
+      "sinkName": "executeQuery"
     },
     {
       "pathNodes": [
         {
           "name": "input",
-          "id": 68,
-          "type": "PARAMETER"
-        },
-        {
-          "scope": "logger",
-          "name": "info",
           "id": 70,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 68,
-      "severity": "HIGH",
-      "sinkId": 70,
-      "sourceName": "input",
-      "vulnerability": "Potential taint flow from input to info",
-      "sinkName": "info"
-    },
-    {
-      "pathNodes": [
-        {
-          "name": "input",
-          "id": 68,
           "type": "PARAMETER"
         },
         {
-          "scope": "logger",
-          "name": "warning",
+          "scope": "System.out",
+          "name": "println",
           "id": 71,
           "type": "METHOD_CALL"
         }
       ],
-      "sourceId": 68,
+      "sourceId": 70,
       "severity": "HIGH",
       "sinkId": 71,
       "sourceName": "input",
-      "vulnerability": "Potential taint flow from input to warning",
-      "sinkName": "warning"
-    },
-    {
-      "pathNodes": [
-        {
-          "name": "userInput",
-          "id": 92,
-          "type": "PARAMETER"
-        },
-        {
-          "name": "sanitized",
-          "id": 93,
-          "type": "LOCAL_VARIABLE"
-        },
-        {
-          "scope": "logger",
-          "name": "info",
-          "id": 98,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 92,
-      "severity": "HIGH",
-      "sinkId": 98,
-      "sourceName": "userInput",
-      "vulnerability": "Potential taint flow from userInput to info",
-      "sinkName": "info"
-    },
-    {
-      "pathNodes": [
-        {
-          "name": "data",
-          "id": 139,
-          "type": "PARAMETER"
-        },
-        {
-          "scope": "logger",
-          "name": "info",
-          "id": 140,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 139,
-      "severity": "HIGH",
-      "sinkId": 140,
-      "sourceName": "data",
-      "vulnerability": "Potential taint flow from data to info",
-      "sinkName": "info"
-    },
-    {
-      "pathNodes": [
-        {
-          "name": "data",
-          "id": 139,
-          "type": "PARAMETER"
-        },
-        {
-          "scope": "logger",
-          "name": "warning",
-          "id": 142,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 139,
-      "severity": "HIGH",
-      "sinkId": 142,
-      "sourceName": "data",
-      "vulnerability": "Potential taint flow from data to warning",
-      "sinkName": "warning"
+      "vulnerability": "Potential taint flow from input to println",
+      "sinkName": "println"
     }
   ],
-  "timestamp": 1749070959295
+  "timestamp": 1749116153773
 }
