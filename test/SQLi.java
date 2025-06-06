@@ -1,80 +1,118 @@
 import java.io.*;
 import java.sql.*;
+import java.net.*;
+import java.security.MessageDigest;
 import javax.servlet.http.*;
+import javax.crypto.Cipher;
+import java.util.Base64;
+import java.util.Properties;
+import java.util.logging.Logger;
 
-public class TaintTestSuite extends HttpServlet {
+public class MegaVulnServlet extends HttpServlet {
 
-    // SOURCE: HttpServletRequest input
-    protected void doGet(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        String userInput = req.getParameter("input");  // SOURCE
+    private static final Logger logger = Logger.getLogger(MegaVulnServlet.class.getName());
 
-        // SINK: Print (CWE-117)
-        System.out.println("User input: " + userInput);  // SINK
+    protected void doPost(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        // A01: Broken Access Control
+        String role = req.getParameter("role");
+        if (role.equals("admin")) {
+            deleteUser(req.getParameter("deleteUserId"));
+        }
 
-        // SINK: SQL Injection (CWE-89)
-        Connection conn = getConnection();
-        Statement stmt = conn.createStatement();
-        String sql = "SELECT * FROM users WHERE username = '" + userInput + "'";
-        stmt.executeQuery(sql);  // SINK
+        // A02: Cryptographic Failures - Weak Hash
+        String password = req.getParameter("password");
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] hash = md.digest(password.getBytes());
+            res.getWriter().write("Hash: " + Base64.getEncoder().encodeToString(hash));
+        } catch (Exception e) {
+            logger.info("Hash error");
+        }
 
-        // Sanitized SQL query (safe path)
-        PreparedStatement ps = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
-        ps.setString(1, userInput); // Should NOT trigger taint
-        ps.executeQuery();
+        // A03: SQL Injection
+        String user = req.getParameter("user");
+        try {
+            Connection conn = DriverManager.getConnection("jdbc:mysql://localhost/test", "root", "root");
+            Statement stmt = conn.createStatement();
+            String sql = "SELECT * FROM users WHERE username = '" + user + "'";
+            stmt.executeQuery(sql);
+        } catch (SQLException e) {
+            logger.warning("SQL error");
+        }
 
-        // Command Injection (CWE-78)
-        Runtime.getRuntime().exec("echo " + userInput);  // SINK
+        // A03: Command Injection
+        String cmd = req.getParameter("cmd");
+        Runtime.getRuntime().exec("sh -c " + cmd);
 
-        // File write (CWE-73 Path Traversal)
-        FileWriter fw = new FileWriter("files/" + userInput);  // SINK
-        fw.write("tainted content");
+        // A04: Insecure Design - Missing validation
+        String email = req.getParameter("email");
+        res.getWriter().write("Welcome " + email);
+
+        // A05: Security Misconfiguration - Debug mode
+        if (req.getParameter("debug").equals("true")) {
+            res.getWriter().write("DEBUG INFO: App in dev mode");
+        }
+
+        // A06: Outdated Component (simulated use)
+        ObjectInputStream ois = new ObjectInputStream(
+            new ByteArrayInputStream(req.getParameter("object").getBytes()));
+        try {
+            Object obj = ois.readObject(); // Unsafe deserialization
+        } catch (Exception e) {
+            logger.info("Deserialization failed");
+        }
+
+        // A07: Auth failure - Hardcoded backdoor
+        String loginUser = req.getParameter("login");
+        if (loginUser.equals("superadmin")) {
+            res.getWriter().write("Backdoor access granted!");
+        }
+
+        // A08: Software and Data Integrity Failures - Reflection-based exec
+        try {
+            Class<?> clazz = Class.forName(req.getParameter("className"));
+            clazz.getMethod("run").invoke(clazz.newInstance());
+        } catch (Exception e) {
+            logger.warning("Reflection issue");
+        }
+
+        // A09: Insufficient Logging
+        try {
+            String action = req.getParameter("action");
+            if (action.equals("transfer")) {
+                res.getWriter().write("Transferring funds...");
+            }
+        } catch (Exception e) {
+            System.out.println("Transfer failed"); // No reason logged
+        }
+
+        // A10: SSRF
+        try {
+            String site = req.getParameter("site");
+            URL url = new URL(site);
+            BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
+            String inputLine;
+            while ((inputLine = in.readLine()) != null) {
+                res.getWriter().write(inputLine);
+            }
+        } catch (Exception e) {
+            logger.warning("SSRF error");
+        }
+
+        // BONUS: Path Traversal
+        String filename = req.getParameter("file");
+        FileWriter fw = new FileWriter("/tmp/uploads/" + filename);
+        fw.write("Sample");
         fw.close();
+    }
 
-        // Reflection
+    private void deleteUser(String id) {
         try {
-            Class.forName(userInput);  // SINK: Dynamic class loading
-        } catch (ClassNotFoundException e) {}
-
-        // Deserialization (CWE-502)
-        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(userInput.getBytes()));
-        try {
-            Object o = ois.readObject();  // SINK
-        } catch (Exception e) {}
-
-        // Propagation through method
-        methodSink(directFlow(userInput));
-
-        // Sanitization example
-        String cleanInput = sanitize(userInput);
-        Statement safeStmt = conn.createStatement();
-        safeStmt.executeQuery("SELECT * FROM safe WHERE col = '" + cleanInput + "'");  // should NOT trigger
-    }
-
-    // SOURCE: args from main()
-    public static void main(String[] args) throws Exception {
-        String cliInput = args[0];  // SOURCE
-        new TaintTestSuite().sink(cliInput);
-    }
-
-    void sink(String input) throws Exception {
-        System.out.println("CLI: " + input); // SINK
-        Runtime.getRuntime().exec("ping " + input);  // SINK
-    }
-
-    String directFlow(String data) {
-        return data;
-    }
-
-    void methodSink(String val) throws Exception {
-        Runtime.getRuntime().exec("echo " + val);  // SINK
-    }
-
-    String sanitize(String input) {
-        // basic sanitization example
-        return input.replaceAll("[^a-zA-Z0-9]", "");
-    }
-
-    Connection getConnection() throws SQLException {
-        return DriverManager.getConnection("jdbc:mysql://localhost/test", "user", "pass");
+            Connection conn = DriverManager.getConnection("jdbc:mysql://localhost/test", "admin", "admin");
+            Statement stmt = conn.createStatement();
+            stmt.executeUpdate("DELETE FROM users WHERE id = '" + id + "'");
+        } catch (SQLException e) {
+            logger.warning("Delete error");
+        }
     }
 }

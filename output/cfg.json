@@ -4,9 +4,18 @@
       "hasFinallyBlock": false,
       "catchClausesCount": 1,
       "exceptionTypes": [
-        "ClassNotFoundException"
+        "Exception"
       ],
-      "id": 39,
+      "id": 89,
+      "type": "TRY_CATCH_BLOCK"
+    },
+    {
+      "hasFinallyBlock": false,
+      "catchClausesCount": 1,
+      "exceptionTypes": [
+        "SQLException"
+      ],
+      "id": 91,
       "type": "TRY_CATCH_BLOCK"
     },
     {
@@ -15,21 +24,136 @@
       "exceptionTypes": [
         "Exception"
       ],
-      "id": 41,
+      "id": 93,
+      "type": "TRY_CATCH_BLOCK"
+    },
+    {
+      "hasFinallyBlock": false,
+      "catchClausesCount": 1,
+      "exceptionTypes": [
+        "Exception"
+      ],
+      "id": 95,
+      "type": "TRY_CATCH_BLOCK"
+    },
+    {
+      "hasFinallyBlock": false,
+      "catchClausesCount": 1,
+      "exceptionTypes": [
+        "Exception"
+      ],
+      "id": 97,
+      "type": "TRY_CATCH_BLOCK"
+    },
+    {
+      "hasFinallyBlock": false,
+      "catchClausesCount": 1,
+      "exceptionTypes": [
+        "Exception"
+      ],
+      "id": 99,
+      "type": "TRY_CATCH_BLOCK"
+    },
+    {
+      "hasElse": false,
+      "condition": "role.equals(\"admin\")",
+      "id": 149,
+      "type": "IF_STATEMENT"
+    },
+    {
+      "hasElse": false,
+      "condition": "req.getParameter(\"debug\").equals(\"true\")",
+      "id": 150,
+      "type": "IF_STATEMENT"
+    },
+    {
+      "hasElse": false,
+      "condition": "loginUser.equals(\"superadmin\")",
+      "id": 151,
+      "type": "IF_STATEMENT"
+    },
+    {
+      "hasElse": false,
+      "condition": "action.equals(\"transfer\")",
+      "id": 152,
+      "type": "IF_STATEMENT"
+    },
+    {
+      "condition": "(inputLine = in.readLine()) != null",
+      "id": 153,
+      "type": "WHILE_LOOP"
+    },
+    {
+      "hasFinallyBlock": false,
+      "catchClausesCount": 1,
+      "exceptionTypes": [
+        "SQLException"
+      ],
+      "id": 162,
       "type": "TRY_CATCH_BLOCK"
     }
   ],
-  "scanId": "377fbf18-8e5d-4da0-b0b9-0d91497ac6eb",
+  "scanId": "fb0f13e3-e75f-4cdc-b024-7b19fbb83d2f",
   "edges": [
     {
       "source": 3,
       "type": "CONTAINS_EXCEPTION_HANDLING",
-      "target": 40
+      "target": 90
     },
     {
       "source": 3,
       "type": "CONTAINS_EXCEPTION_HANDLING",
-      "target": 42
+      "target": 92
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_EXCEPTION_HANDLING",
+      "target": 94
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_EXCEPTION_HANDLING",
+      "target": 96
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_EXCEPTION_HANDLING",
+      "target": 98
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_EXCEPTION_HANDLING",
+      "target": 100
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_CONTROL_FLOW",
+      "target": 149
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_CONTROL_FLOW",
+      "target": 150
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_CONTROL_FLOW",
+      "target": 151
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_CONTROL_FLOW",
+      "target": 152
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_CONTROL_FLOW",
+      "target": 153
+    },
+    {
+      "source": 154,
+      "type": "CONTAINS_EXCEPTION_HANDLING",
+      "target": 163
     }
   ]
 }

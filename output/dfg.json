@@ -14,305 +14,598 @@
     },
     {
       "dataType": "String",
-      "name": "userInput",
+      "name": "role",
       "id": 6,
       "type": "LOCAL_VARIABLE",
-      "initializer": "req.getParameter(\"input\")"
+      "initializer": "req.getParameter(\"role\")"
+    },
+    {
+      "dataType": "String",
+      "name": "password",
+      "id": 7,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "req.getParameter(\"password\")"
+    },
+    {
+      "dataType": "MessageDigest",
+      "name": "md",
+      "id": 8,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "MessageDigest.getInstance(\"MD5\")"
+    },
+    {
+      "dataType": "byte[]",
+      "name": "hash",
+      "id": 9,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "md.digest(password.getBytes())"
+    },
+    {
+      "dataType": "String",
+      "name": "user",
+      "id": 10,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "req.getParameter(\"user\")"
     },
     {
       "dataType": "Connection",
       "name": "conn",
-      "id": 7,
+      "id": 11,
       "type": "LOCAL_VARIABLE",
-      "initializer": "getConnection()"
+      "initializer": "DriverManager.getConnection(\"jdbc:mysql://localhost/test\", \"root\", \"root\")"
     },
     {
       "dataType": "Statement",
       "name": "stmt",
-      "id": 8,
+      "id": 12,
       "type": "LOCAL_VARIABLE",
       "initializer": "conn.createStatement()"
     },
     {
       "dataType": "String",
       "name": "sql",
-      "id": 9,
+      "id": 13,
       "type": "LOCAL_VARIABLE",
-      "initializer": "\"SELECT * FROM users WHERE username = '\" + userInput + \"'\""
+      "initializer": "\"SELECT * FROM users WHERE username = '\" + user + \"'\""
     },
     {
-      "dataType": "PreparedStatement",
-      "name": "ps",
-      "id": 10,
+      "dataType": "String",
+      "name": "cmd",
+      "id": 14,
       "type": "LOCAL_VARIABLE",
-      "initializer": "conn.prepareStatement(\"SELECT * FROM users WHERE username = ?\")"
+      "initializer": "req.getParameter(\"cmd\")"
     },
     {
-      "dataType": "FileWriter",
-      "name": "fw",
-      "id": 11,
+      "dataType": "String",
+      "name": "email",
+      "id": 15,
       "type": "LOCAL_VARIABLE",
-      "initializer": "new FileWriter(\"files/\" + userInput)"
+      "initializer": "req.getParameter(\"email\")"
     },
     {
       "dataType": "ObjectInputStream",
       "name": "ois",
-      "id": 12,
+      "id": 16,
       "type": "LOCAL_VARIABLE",
-      "initializer": "new ObjectInputStream(new ByteArrayInputStream(userInput.getBytes()))"
+      "initializer": "new ObjectInputStream(new ByteArrayInputStream(req.getParameter(\"object\").getBytes()))"
     },
     {
       "dataType": "Object",
-      "name": "o",
-      "id": 13,
+      "name": "obj",
+      "id": 17,
       "type": "LOCAL_VARIABLE",
       "initializer": "ois.readObject()"
     },
     {
       "dataType": "String",
-      "name": "cleanInput",
-      "id": 14,
+      "name": "loginUser",
+      "id": 18,
       "type": "LOCAL_VARIABLE",
-      "initializer": "sanitize(userInput)"
+      "initializer": "req.getParameter(\"login\")"
     },
     {
-      "dataType": "Statement",
-      "name": "safeStmt",
-      "id": 15,
+      "dataType": "Class<?>",
+      "name": "clazz",
+      "id": 19,
       "type": "LOCAL_VARIABLE",
-      "initializer": "conn.createStatement()"
+      "initializer": "Class.forName(req.getParameter(\"className\"))"
+    },
+    {
+      "dataType": "String",
+      "name": "action",
+      "id": 20,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "req.getParameter(\"action\")"
+    },
+    {
+      "dataType": "String",
+      "name": "site",
+      "id": 21,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "req.getParameter(\"site\")"
+    },
+    {
+      "dataType": "URL",
+      "name": "url",
+      "id": 22,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new URL(site)"
+    },
+    {
+      "dataType": "BufferedReader",
+      "name": "in",
+      "id": 23,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new BufferedReader(new InputStreamReader(url.openStream()))"
+    },
+    {
+      "dataType": "String",
+      "name": "inputLine",
+      "id": 24,
+      "type": "LOCAL_VARIABLE"
+    },
+    {
+      "dataType": "String",
+      "name": "filename",
+      "id": 25,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "req.getParameter(\"file\")"
+    },
+    {
+      "dataType": "FileWriter",
+      "name": "fw",
+      "id": 26,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "new FileWriter(\"/tmp/uploads/\" + filename)"
     },
     {
       "scope": "req",
       "name": "getParameter",
       "arguments": 1,
-      "id": 16,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "System.out",
-      "name": "println",
-      "arguments": 1,
-      "id": 17,
-      "type": "METHOD_CALL"
-    },
-    {
-      "name": "getConnection",
-      "arguments": 0,
-      "id": 18,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "conn",
-      "name": "createStatement",
-      "arguments": 0,
-      "id": 19,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "stmt",
-      "name": "executeQuery",
-      "arguments": 1,
-      "id": 20,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "conn",
-      "name": "prepareStatement",
-      "arguments": 1,
-      "id": 21,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "ps",
-      "name": "setString",
-      "arguments": 2,
-      "id": 22,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "ps",
-      "name": "executeQuery",
-      "arguments": 0,
-      "id": 23,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "Runtime.getRuntime()",
-      "name": "exec",
-      "arguments": 1,
-      "id": 24,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "Runtime",
-      "name": "getRuntime",
-      "arguments": 0,
-      "id": 25,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "fw",
-      "name": "write",
-      "arguments": 1,
-      "id": 26,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "fw",
-      "name": "close",
-      "arguments": 0,
       "id": 27,
       "type": "METHOD_CALL"
     },
     {
-      "scope": "Class",
-      "name": "forName",
+      "scope": "role",
+      "name": "equals",
       "arguments": 1,
       "id": 28,
       "type": "METHOD_CALL"
     },
     {
-      "scope": "userInput",
-      "name": "getBytes",
-      "arguments": 0,
+      "name": "deleteUser",
+      "arguments": 1,
       "id": 29,
       "type": "METHOD_CALL"
     },
     {
-      "scope": "ois",
-      "name": "readObject",
-      "arguments": 0,
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
       "id": 30,
       "type": "METHOD_CALL"
     },
     {
-      "name": "methodSink",
+      "scope": "req",
+      "name": "getParameter",
       "arguments": 1,
       "id": 31,
       "type": "METHOD_CALL"
     },
     {
-      "name": "directFlow",
+      "scope": "MessageDigest",
+      "name": "getInstance",
       "arguments": 1,
       "id": 32,
       "type": "METHOD_CALL"
     },
     {
-      "name": "sanitize",
+      "scope": "md",
+      "name": "digest",
       "arguments": 1,
       "id": 33,
       "type": "METHOD_CALL"
     },
     {
-      "scope": "conn",
-      "name": "createStatement",
+      "scope": "password",
+      "name": "getBytes",
       "arguments": 0,
       "id": 34,
       "type": "METHOD_CALL"
     },
     {
-      "scope": "safeStmt",
-      "name": "executeQuery",
+      "scope": "res.getWriter()",
+      "name": "write",
       "arguments": 1,
       "id": 35,
       "type": "METHOD_CALL"
     },
     {
-      "dataType": "String[]",
-      "name": "args",
-      "id": 64,
-      "type": "PARAMETER"
-    },
-    {
-      "dataType": "String",
-      "name": "cliInput",
-      "id": 65,
-      "type": "LOCAL_VARIABLE",
-      "initializer": "args[0]"
-    },
-    {
-      "scope": "new TaintTestSuite()",
-      "name": "sink",
-      "arguments": 1,
-      "id": 66,
-      "type": "METHOD_CALL"
-    },
-    {
-      "dataType": "String",
-      "name": "input",
-      "id": 70,
-      "type": "PARAMETER"
-    },
-    {
-      "scope": "System.out",
-      "name": "println",
-      "arguments": 1,
-      "id": 71,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "Runtime.getRuntime()",
-      "name": "exec",
-      "arguments": 1,
-      "id": 72,
-      "type": "METHOD_CALL"
-    },
-    {
-      "scope": "Runtime",
-      "name": "getRuntime",
+      "scope": "res",
+      "name": "getWriter",
       "arguments": 0,
-      "id": 73,
+      "id": 36,
       "type": "METHOD_CALL"
     },
     {
-      "dataType": "String",
-      "name": "data",
-      "id": 80,
-      "type": "PARAMETER"
-    },
-    {
-      "dataType": "String",
-      "name": "val",
-      "id": 83,
-      "type": "PARAMETER"
-    },
-    {
-      "scope": "Runtime.getRuntime()",
-      "name": "exec",
+      "scope": "Base64.getEncoder()",
+      "name": "encodeToString",
       "arguments": 1,
-      "id": 84,
+      "id": 37,
       "type": "METHOD_CALL"
     },
     {
-      "scope": "Runtime",
-      "name": "getRuntime",
+      "scope": "Base64",
+      "name": "getEncoder",
       "arguments": 0,
-      "id": 85,
+      "id": 38,
       "type": "METHOD_CALL"
     },
     {
-      "dataType": "String",
-      "name": "input",
-      "id": 89,
-      "type": "PARAMETER"
+      "scope": "logger",
+      "name": "info",
+      "arguments": 1,
+      "id": 39,
+      "type": "METHOD_CALL"
     },
     {
-      "scope": "input",
-      "name": "replaceAll",
-      "arguments": 2,
-      "id": 90,
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 40,
       "type": "METHOD_CALL"
     },
     {
       "scope": "DriverManager",
       "name": "getConnection",
       "arguments": 3,
-      "id": 95,
+      "id": 41,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "conn",
+      "name": "createStatement",
+      "arguments": 0,
+      "id": 42,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "stmt",
+      "name": "executeQuery",
+      "arguments": 1,
+      "id": 43,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "warning",
+      "arguments": 1,
+      "id": 44,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 45,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "Runtime.getRuntime()",
+      "name": "exec",
+      "arguments": 1,
+      "id": 46,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "Runtime",
+      "name": "getRuntime",
+      "arguments": 0,
+      "id": 47,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 48,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res.getWriter()",
+      "name": "write",
+      "arguments": 1,
+      "id": 49,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res",
+      "name": "getWriter",
+      "arguments": 0,
+      "id": 50,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req.getParameter(\"debug\")",
+      "name": "equals",
+      "arguments": 1,
+      "id": 51,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 52,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res.getWriter()",
+      "name": "write",
+      "arguments": 1,
+      "id": 53,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res",
+      "name": "getWriter",
+      "arguments": 0,
+      "id": 54,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req.getParameter(\"object\")",
+      "name": "getBytes",
+      "arguments": 0,
+      "id": 55,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 56,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "ois",
+      "name": "readObject",
+      "arguments": 0,
+      "id": 57,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "info",
+      "arguments": 1,
+      "id": 58,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 59,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "loginUser",
+      "name": "equals",
+      "arguments": 1,
+      "id": 60,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res.getWriter()",
+      "name": "write",
+      "arguments": 1,
+      "id": 61,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res",
+      "name": "getWriter",
+      "arguments": 0,
+      "id": 62,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "Class",
+      "name": "forName",
+      "arguments": 1,
+      "id": 63,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 64,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "clazz.getMethod(\"run\")",
+      "name": "invoke",
+      "arguments": 1,
+      "id": 65,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "clazz",
+      "name": "getMethod",
+      "arguments": 1,
+      "id": 66,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "clazz",
+      "name": "newInstance",
+      "arguments": 0,
+      "id": 67,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "warning",
+      "arguments": 1,
+      "id": 68,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 69,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "action",
+      "name": "equals",
+      "arguments": 1,
+      "id": 70,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res.getWriter()",
+      "name": "write",
+      "arguments": 1,
+      "id": 71,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res",
+      "name": "getWriter",
+      "arguments": 0,
+      "id": 72,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "System.out",
+      "name": "println",
+      "arguments": 1,
+      "id": 73,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 74,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "url",
+      "name": "openStream",
+      "arguments": 0,
+      "id": 75,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "in",
+      "name": "readLine",
+      "arguments": 0,
+      "id": 76,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res.getWriter()",
+      "name": "write",
+      "arguments": 1,
+      "id": 77,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "res",
+      "name": "getWriter",
+      "arguments": 0,
+      "id": 78,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "warning",
+      "arguments": 1,
+      "id": 79,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "req",
+      "name": "getParameter",
+      "arguments": 1,
+      "id": 80,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "fw",
+      "name": "write",
+      "arguments": 1,
+      "id": 81,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "fw",
+      "name": "close",
+      "arguments": 0,
+      "id": 82,
+      "type": "METHOD_CALL"
+    },
+    {
+      "id": 109,
+      "type": "ASSIGNMENT",
+      "value": "in.readLine()",
+      "operator": "ASSIGN",
+      "target": "inputLine"
+    },
+    {
+      "dataType": "String",
+      "name": "id",
+      "id": 155,
+      "type": "PARAMETER"
+    },
+    {
+      "dataType": "Connection",
+      "name": "conn",
+      "id": 156,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "DriverManager.getConnection(\"jdbc:mysql://localhost/test\", \"admin\", \"admin\")"
+    },
+    {
+      "dataType": "Statement",
+      "name": "stmt",
+      "id": 157,
+      "type": "LOCAL_VARIABLE",
+      "initializer": "conn.createStatement()"
+    },
+    {
+      "scope": "DriverManager",
+      "name": "getConnection",
+      "arguments": 3,
+      "id": 158,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "conn",
+      "name": "createStatement",
+      "arguments": 0,
+      "id": 159,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "stmt",
+      "name": "executeUpdate",
+      "arguments": 1,
+      "id": 160,
+      "type": "METHOD_CALL"
+    },
+    {
+      "scope": "logger",
+      "name": "warning",
+      "arguments": 1,
+      "id": 161,
       "type": "METHOD_CALL"
     }
   ],
-  "scanId": "377fbf18-8e5d-4da0-b0b9-0d91497ac6eb",
+  "scanId": "fb0f13e3-e75f-4cdc-b024-7b19fbb83d2f",
   "edges": [
     {
       "source": 4,
@@ -320,144 +613,179 @@
       "target": 6
     },
     {
-      "source": 7,
+      "source": 4,
       "type": "DATA_FLOW",
-      "target": 8
+      "target": 7
     },
     {
-      "source": 6,
+      "source": 8,
       "type": "DATA_FLOW",
       "target": 9
     },
     {
       "source": 7,
       "type": "DATA_FLOW",
+      "target": 9
+    },
+    {
+      "source": 4,
+      "type": "DATA_FLOW",
       "target": 10
     },
     {
-      "source": 6,
-      "type": "DATA_FLOW",
-      "target": 11
-    },
-    {
-      "source": 6,
+      "source": 11,
       "type": "DATA_FLOW",
       "target": 12
     },
     {
-      "source": 12,
+      "source": 10,
       "type": "DATA_FLOW",
       "target": 13
     },
     {
-      "source": 6,
+      "source": 4,
       "type": "DATA_FLOW",
       "target": 14
     },
     {
-      "source": 7,
+      "source": 4,
       "type": "DATA_FLOW",
       "target": 15
     },
     {
-      "source": 6,
+      "source": 4,
+      "type": "DATA_FLOW",
+      "target": 16
+    },
+    {
+      "source": 16,
       "type": "DATA_FLOW",
       "target": 17
     },
     {
-      "source": 9,
+      "source": 4,
+      "type": "DATA_FLOW",
+      "target": 18
+    },
+    {
+      "source": 4,
+      "type": "DATA_FLOW",
+      "target": 19
+    },
+    {
+      "source": 4,
       "type": "DATA_FLOW",
       "target": 20
     },
     {
-      "source": 6,
+      "source": 4,
+      "type": "DATA_FLOW",
+      "target": 21
+    },
+    {
+      "source": 21,
       "type": "DATA_FLOW",
       "target": 22
     },
     {
-      "source": 6,
+      "source": 22,
       "type": "DATA_FLOW",
-      "target": 24
+      "target": 23
     },
     {
-      "source": 6,
+      "source": 4,
       "type": "DATA_FLOW",
-      "target": 28
+      "target": 25
     },
     {
-      "source": 6,
+      "source": 25,
       "type": "DATA_FLOW",
-      "target": 31
+      "target": 26
     },
     {
-      "source": 6,
+      "source": 4,
       "type": "DATA_FLOW",
-      "target": 32
+      "target": 29
     },
     {
-      "source": 6,
+      "source": 7,
       "type": "DATA_FLOW",
       "target": 33
     },
     {
-      "source": 14,
+      "source": 9,
       "type": "DATA_FLOW",
       "target": 35
     },
     {
-      "source": 6,
-      "type": "DATA_FLOW",
-      "target": 36
-    },
-    {
-      "source": 6,
+      "source": 9,
       "type": "DATA_FLOW",
       "target": 37
     },
     {
-      "source": 6,
+      "source": 13,
       "type": "DATA_FLOW",
-      "target": 38
+      "target": 43
     },
     {
-      "source": 64,
+      "source": 14,
+      "type": "DATA_FLOW",
+      "target": 46
+    },
+    {
+      "source": 15,
+      "type": "DATA_FLOW",
+      "target": 49
+    },
+    {
+      "source": 4,
+      "type": "DATA_FLOW",
+      "target": 63
+    },
+    {
+      "source": 19,
       "type": "DATA_FLOW",
       "target": 65
     },
     {
-      "source": 65,
+      "source": 24,
       "type": "DATA_FLOW",
-      "target": 66
+      "target": 77
     },
     {
-      "source": 64,
+      "source": 21,
       "type": "DATA_FLOW",
-      "target": 68
+      "target": 85
     },
     {
-      "source": 70,
+      "source": 22,
       "type": "DATA_FLOW",
-      "target": 71
+      "target": 86
     },
     {
-      "source": 70,
+      "source": 22,
       "type": "DATA_FLOW",
-      "target": 72
+      "target": 87
     },
     {
-      "source": 80,
+      "source": 25,
       "type": "DATA_FLOW",
-      "target": 81
+      "target": 88
     },
     {
-      "source": 83,
+      "source": 23,
       "type": "DATA_FLOW",
-      "target": 84
+      "target": 109
     },
     {
-      "source": 89,
+      "source": 156,
       "type": "DATA_FLOW",
-      "target": 91
+      "target": 157
+    },
+    {
+      "source": 155,
+      "type": "DATA_FLOW",
+      "target": 160
     }
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "scanId": "377fbf18-8e5d-4da0-b0b9-0d91497ac6eb",
+  "scanId": "fb0f13e3-e75f-4cdc-b024-7b19fbb83d2f",
   "taintedPaths": [
     {
       "pathNodes": [
@@ -9,107 +9,29 @@
           "type": "PARAMETER"
         },
         {
-          "name": "userInput",
-          "id": 6,
-          "type": "LOCAL_VARIABLE"
-        },
-        {
-          "scope": "System.out",
-          "name": "println",
-          "id": 17,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 4,
-      "severity": "HIGH",
-      "sinkId": 17,
-      "sourceName": "req",
-      "vulnerability": "Potential taint flow from req to println",
-      "sinkName": "println"
-    },
-    {
-      "pathNodes": [
-        {
-          "name": "req",
-          "id": 4,
-          "type": "PARAMETER"
-        },
-        {
-          "name": "userInput",
-          "id": 6,
-          "type": "LOCAL_VARIABLE"
-        },
-        {
-          "name": "cleanInput",
-          "id": 14,
-          "type": "LOCAL_VARIABLE"
-        },
-        {
-          "scope": "safeStmt",
-          "name": "executeQuery",
-          "id": 35,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 4,
-      "severity": "HIGH",
-      "sinkId": 35,
-      "sourceName": "req",
-      "vulnerability": "Potential taint flow from req to executeQuery",
-      "sinkName": "executeQuery"
-    },
-    {
-      "pathNodes": [
-        {
-          "name": "req",
-          "id": 4,
-          "type": "PARAMETER"
-        },
-        {
-          "name": "userInput",
-          "id": 6,
+          "name": "user",
+          "id": 10,
           "type": "LOCAL_VARIABLE"
         },
         {
           "name": "sql",
-          "id": 9,
+          "id": 13,
           "type": "LOCAL_VARIABLE"
         },
         {
           "scope": "stmt",
           "name": "executeQuery",
-          "id": 20,
+          "id": 43,
           "type": "METHOD_CALL"
         }
       ],
       "sourceId": 4,
       "severity": "HIGH",
-      "sinkId": 20,
+      "sinkId": 43,
       "sourceName": "req",
       "vulnerability": "Potential taint flow from req to executeQuery",
       "sinkName": "executeQuery"
-    },
-    {
-      "pathNodes": [
-        {
-          "name": "input",
-          "id": 70,
-          "type": "PARAMETER"
-        },
-        {
-          "scope": "System.out",
-          "name": "println",
-          "id": 71,
-          "type": "METHOD_CALL"
-        }
-      ],
-      "sourceId": 70,
-      "severity": "HIGH",
-      "sinkId": 71,
-      "sourceName": "input",
-      "vulnerability": "Potential taint flow from input to println",
-      "sinkName": "println"
     }
   ],
-  "timestamp": 1749116153773
+  "timestamp": 1749155700196
 }
