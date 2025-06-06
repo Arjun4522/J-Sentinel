@@ -48,10 +48,12 @@ rules:
     severity: "HIGH"
     description: "Sensitive data exposed through logging without encryption"
     pattern:
-      source_names: ["password", "token", "key", "secret", "ssn", "creditCard", "apiKey"]
+      source_names: ["password", "token", "key", "secret", "ssn", "creditCard", "apiKey", "userInput", "input", "data", "filePath"]
       sink_names: ["info", "debug", "warn", "error", "log", "println", "print"]
       sink_types: ["METHOD_CALL"]
       sink_scopes: ["logger", "System.out", "System.err", "console"]
+      path_constraints:
+        - not_contains: ["encrypt", "hash", "mask", "sanitize", "clean"]
     examples:
       - vulnerability: "Potential taint flow from userInput to info"
         source: "userInput"
@@ -99,11 +101,12 @@ rules:
     description: "Unsanitized user input in log statements can lead to log injection"
     pattern:
       source_types: ["PARAMETER", "HTTP_REQUEST"]
+      source_names: ["userInput", "input", "data", "content", "filePath", "line"]
       sink_names: ["info", "debug", "warn", "error", "log", "println"]
       sink_types: ["METHOD_CALL"]
       sink_scopes: ["logger", "System.out", "System.err"]
       path_constraints:
-        - not_contains: ["sanitize", "escape", "clean", "validate"]
+        - not_contains: ["sanitize", "escape", "clean", "validate", "replaceAll"]
     examples:
       - vulnerability: "Potential taint flow from filePath to info"
         risk: "Attacker can inject malicious content into logs"
@@ -276,7 +279,7 @@ risk_assessment:
     direct_flow: 1.0          # Direct parameter to sink
     single_transformation: 0.8 # One intermediate variable
     multiple_transformations: 0.6 # Multiple variables in path
-    sanitization_present: 0.3  # Some sanitization detected
+    sanitization_present: 0.2  # Stronger reduction for sanitization
     
   composite_scoring:
     formula: "severity_weight * confidence_factor * path_complexity"
@@ -300,6 +303,8 @@ pattern_extensions:
       multiplier: 2.0  # Admin functionality is critical
     - context: "api_endpoint"
       multiplier: 1.3  # API endpoints need extra scrutiny
+    - context: "file_access"
+      multiplier: 1.2  # File-related operations have moderate risk
       
   # Data classification
   sensitive_data_patterns:
@@ -307,11 +312,12 @@ pattern_extensions:
     financial: ["credit", "account", "bank", "routing", "payment"]
     credentials: ["password", "secret", "key", "token", "credential"]
     technical: ["hash", "salt", "cipher", "private"]
+    user_input: ["userInput", "input", "data", "content", "filePath", "line"]
     
   # Sanitization detection
   sanitization_functions:
     input_validation: ["validate", "check", "verify", "assert"]
-    encoding: ["encode", "escape", "sanitize", "clean"]
+    encoding: ["encode", "escape", "sanitize", "clean", "replaceAll"]
     encryption: ["encrypt", "hash", "cipher", "sign"]
     parameterization: ["prepare", "bind", "parameter"]
 
@@ -371,37 +377,12 @@ application_logic:
       description: "Exclude obvious test code patterns"
     - filter: "framework_safe_methods"
       description: "Skip framework methods known to be safe"
+    - filter: "irrelevant_category_check"
+      description: "Skip findings for categories without matching sinks (e.g., SQL Injection without database calls)"
       
   # Reporting configuration
   reporting:
     group_by: ["owasp_category", "severity"]
     include_remediation: true
     include_code_context: true
-    max_paths_per_vulnerability: 5
-
-# ==========================================
-# Example Usage with Provided Data
-# ==========================================
-
-example_analysis:
-  input_taint_path:
-    pathNodes:
-      - name: "userInput"
-        id: 48
-        type: "PARAMETER"
-      - scope: "logger"
-        name: "info"
-        id: 51
-        type: "METHOD_CALL"
-    vulnerability: "Potential taint flow from userInput to info"
-    
-  matched_rules:
-    - rule_id: "OWASP-A03-002"
-      confidence: 0.9
-      explanation: "User input flows directly to logging without sanitization"
-      remediation: "Sanitize user input before logging or use structured logging"
-      
-    - rule_id: "OWASP-A02-001"
-      confidence: 0.7
-      explanation: "Potential sensitive data exposure in logs"
-      remediation: "Mask or exclude sensitive data from logs"
+    max_paths_per_vulnerability: 3  # Reduced to avoid repetitive findings

@@ -1,126 +1,159 @@
 {
   "nodes": [
     {
-      "hasElse": false,
-      "condition": "line != null",
-      "id": 15,
-      "type": "IF_STATEMENT"
-    },
-    {
       "hasFinallyBlock": false,
       "catchClausesCount": 1,
       "exceptionTypes": [
-        "IOException"
+        "Exception"
       ],
-      "id": 18,
+      "id": 89,
       "type": "TRY_CATCH_BLOCK"
     },
     {
       "hasFinallyBlock": false,
       "catchClausesCount": 1,
       "exceptionTypes": [
-        "IOException"
+        "SQLException"
       ],
-      "id": 31,
+      "id": 91,
       "type": "TRY_CATCH_BLOCK"
     },
     {
-      "hasElse": false,
-      "condition": "line != null",
-      "id": 60,
-      "type": "IF_STATEMENT"
-    },
-    {
-      "hasFinallyBlock": true,
+      "hasFinallyBlock": false,
       "catchClausesCount": 1,
       "exceptionTypes": [
-        "IOException"
+        "Exception"
       ],
-      "id": 65,
+      "id": 93,
       "type": "TRY_CATCH_BLOCK"
     },
     {
-      "hasElse": true,
-      "condition": "\"start\".equals(input)",
-      "id": 74,
+      "hasFinallyBlock": false,
+      "catchClausesCount": 1,
+      "exceptionTypes": [
+        "Exception"
+      ],
+      "id": 95,
+      "type": "TRY_CATCH_BLOCK"
+    },
+    {
+      "hasFinallyBlock": false,
+      "catchClausesCount": 1,
+      "exceptionTypes": [
+        "Exception"
+      ],
+      "id": 97,
+      "type": "TRY_CATCH_BLOCK"
+    },
+    {
+      "hasFinallyBlock": false,
+      "catchClausesCount": 1,
+      "exceptionTypes": [
+        "Exception"
+      ],
+      "id": 99,
+      "type": "TRY_CATCH_BLOCK"
+    },
+    {
+      "hasElse": false,
+      "condition": "role.equals(\"admin\")",
+      "id": 149,
       "type": "IF_STATEMENT"
     },
     {
       "hasElse": false,
-      "condition": "userInput == null || userInput.isEmpty()",
-      "id": 104,
-      "type": "IF_STATEMENT"
-    },
-    {
-      "hasElse": true,
-      "condition": "sanitized.length() > 0",
-      "id": 105,
+      "condition": "req.getParameter(\"debug\").equals(\"true\")",
+      "id": 150,
       "type": "IF_STATEMENT"
     },
     {
       "hasElse": false,
-      "condition": "input == null",
-      "id": 134,
+      "condition": "loginUser.equals(\"superadmin\")",
+      "id": 151,
       "type": "IF_STATEMENT"
     },
     {
       "hasElse": false,
-      "condition": "data.length() > 10",
-      "id": 146,
+      "condition": "action.equals(\"transfer\")",
+      "id": 152,
       "type": "IF_STATEMENT"
+    },
+    {
+      "condition": "(inputLine = in.readLine()) != null",
+      "id": 153,
+      "type": "WHILE_LOOP"
+    },
+    {
+      "hasFinallyBlock": false,
+      "catchClausesCount": 1,
+      "exceptionTypes": [
+        "SQLException"
+      ],
+      "id": 162,
+      "type": "TRY_CATCH_BLOCK"
     }
   ],
-  "scanId": "505f3a22-e96b-400e-b70c-b5e41b1e1a4a",
+  "scanId": "fb0f13e3-e75f-4cdc-b024-7b19fbb83d2f",
   "edges": [
     {
       "source": 3,
-      "type": "CONTAINS_CONTROL_FLOW",
-      "target": 15
+      "type": "CONTAINS_EXCEPTION_HANDLING",
+      "target": 90
     },
     {
       "source": 3,
       "type": "CONTAINS_EXCEPTION_HANDLING",
-      "target": 19
+      "target": 92
     },
     {
-      "source": 20,
+      "source": 3,
       "type": "CONTAINS_EXCEPTION_HANDLING",
-      "target": 32
+      "target": 94
     },
     {
-      "source": 47,
-      "type": "CONTAINS_CONTROL_FLOW",
-      "target": 60
-    },
-    {
-      "source": 47,
+      "source": 3,
       "type": "CONTAINS_EXCEPTION_HANDLING",
-      "target": 66
+      "target": 96
     },
     {
-      "source": 67,
-      "type": "CONTAINS_CONTROL_FLOW",
-      "target": 74
+      "source": 3,
+      "type": "CONTAINS_EXCEPTION_HANDLING",
+      "target": 98
     },
     {
-      "source": 91,
-      "type": "CONTAINS_CONTROL_FLOW",
-      "target": 104
+      "source": 3,
+      "type": "CONTAINS_EXCEPTION_HANDLING",
+      "target": 100
     },
     {
-      "source": 91,
+      "source": 3,
       "type": "CONTAINS_CONTROL_FLOW",
-      "target": 105
+      "target": 149
     },
     {
-      "source": 130,
+      "source": 3,
       "type": "CONTAINS_CONTROL_FLOW",
-      "target": 134
+      "target": 150
     },
     {
-      "source": 138,
+      "source": 3,
       "type": "CONTAINS_CONTROL_FLOW",
-      "target": 146
+      "target": 151
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_CONTROL_FLOW",
+      "target": 152
+    },
+    {
+      "source": 3,
+      "type": "CONTAINS_CONTROL_FLOW",
+      "target": 153
+    },
+    {
+      "source": 154,
+      "type": "CONTAINS_EXCEPTION_HANDLING",
+      "target": 163
     }
   ]
 }
