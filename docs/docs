@@ -35,9 +35,27 @@ curl -u user:secret http://localhost:8080/api/dfg?scanId=<scanId>
 
 curl -u user:secret http://localhost:8080/api/taint_analyse?scanId=<scanId>
 
+Java Parser
+-----------
 
 cd ~/Desktop/J-Sentinel
 ./jsentinel.sh scan --input test/ --endpoint http://localhost:8080/api --user user --password secret --output output/scan.json
 ./jsentinel.sh cfg --endpoint http://localhost:8080/api --user user --password secret --output output/cfg.json
 ./jsentinel.sh dfg --endpoint http://localhost:8080/api --user user --password secret --output output/dfg.json
 ./jsentinel.sh taint --endpoint http://localhost:8080/api --user user --password secret --output output/taint_analysis.json
+
+
+C/C++ Parser
+-------------
+
+cd cpp-parser/build
+
+rm -rf 
+
+cmake ../
+
+make
+
+/cpp_scanner ../test_code.cpp --local --output=../../output/codegraph_cpp.json --
+
+./cpp_scanner ../test_code.cpp --
