@@ -1,0 +1,817 @@
+# OWASP Top 10 2021 DSL Security Rules
+# Comprehensive patterns for codegraph, CFG, and DFG analysis
+
+# ==========================================
+# A01:2021 - Broken Access Control
+# ==========================================
+
+- id: A01-001
+  category: A01:2021 - Broken Access Control
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: METHOD
+        attributes:
+          annotations: ^.*@(RequestMapping|GetMapping|PostMapping|PutMapping|DeleteMapping|RestController).*
+    edges: []
+  severity: High
+  description: HTTP endpoint method without authorization annotations
+  remediation: Add @PreAuthorize, @RolesAllowed, or @Secured annotations
+
+- id: A01-002
+  category: A01:2021 - Broken Access Control
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD
+        attributes:
+          name: ^(getUserData|updateProfile|deleteAccount|admin|sensitive).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(getPrincipal|checkAuthorization|isUserInRole|hasRole).*
+    edges:
+      - type: INVOKES
+        source_type: METHOD
+        target_type: METHOD_CALL
+  severity: Medium
+  description: Sensitive method without explicit authorization check
+  remediation: Add authorization checks before sensitive operations
+
+- id: A01-003
+  category: A01:2021 - Broken Access Control
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          dataType: ^(String|int|long|Integer|Long).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(findById|deleteById|updateById|getById).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: High
+  description: Direct use of user-supplied ID without access control
+  remediation: Validate user permissions for the requested resource ID
+
+- id: A01-004
+  category: A01:2021 - Broken Access Control
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: FIELD
+        attributes:
+          modifiers: ^.*public.*
+          name: ^(password|secret|key|token).*
+    edges: []
+  severity: Medium
+  description: Sensitive fields exposed as public
+  remediation: Make sensitive fields private and provide controlled access
+
+- id: A01-005
+  category: A01:2021 - Broken Access Control
+  graph: cfg
+  pattern:
+    nodes:
+      - type: CONDITION
+        attributes:
+          operator: ^(==|!=|equals).*
+      - type: LITERAL
+        attributes:
+          value: ^(admin|root|administrator).*
+    edges:
+      - type: CONTROLS
+        source_type: CONDITION
+        target_type: LITERAL
+  severity: High
+  description: Hard-coded role checks in conditions
+  remediation: Use role-based access control systems instead of hard-coded checks
+
+# ==========================================
+# A02:2021 - Cryptographic Failures
+# ==========================================
+
+- id: A02-001
+  category: A02:2021 - Cryptographic Failures
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(MD5|SHA1|DES|RC4).*
+    edges: []
+  severity: High
+  description: Use of weak cryptographic algorithms
+  remediation: Use strong algorithms like AES-256, SHA-256, or bcrypt
+
+- id: A02-002
+  category: A02:2021 - Cryptographic Failures
+  graph: dfg
+  pattern:
+    nodes:
+      - type: LITERAL
+        attributes:
+          value: ^(password|secret|key).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(println|print|log|debug|info).*
+    edges:
+      - type: DATA_FLOW
+        source_type: LITERAL
+        target_type: METHOD_CALL
+  severity: Critical
+  description: Sensitive data in logs or console output
+  remediation: Remove or mask sensitive data before logging
+
+- id: A02-003
+  category: A02:2021 - Cryptographic Failures
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(setTrustAllCerts|setHostnameVerifier|accept).*
+          receiver: ^(SSLContext|HttpsURLConnection|TrustManager).*
+    edges: []
+  severity: High
+  description: SSL/TLS certificate validation disabled
+  remediation: Enable proper certificate validation
+
+- id: A02-004
+  category: A02:2021 - Cryptographic Failures
+  graph: dfg
+  pattern:
+    nodes:
+      - type: LITERAL
+        attributes:
+          value: ^(http://).*
+      - type: FIELD
+        attributes:
+          name: ^(url|endpoint|baseUrl).*
+    edges:
+      - type: DATA_FLOW
+        source_type: LITERAL
+        target_type: FIELD
+  severity: Medium
+  description: Unencrypted HTTP URLs in configuration
+  remediation: Use HTTPS for all external communications
+
+- id: A02-005
+  category: A02:2021 - Cryptographic Failures
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(Random|Math\.random).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(generateKey|createToken|generatePassword).*
+    edges:
+      - type: INVOKES
+        source_type: METHOD_CALL
+        target_type: METHOD_CALL
+  severity: High
+  description: Weak random number generation for cryptographic purposes
+  remediation: Use SecureRandom for cryptographic operations
+
+# ==========================================
+# A03:2021 - Injection
+# ==========================================
+
+- id: A03-001
+  category: A03:2021 - Injection
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          source: ^(request|user|input).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(executeQuery|createQuery|prepareStatement).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: Critical
+  description: SQL injection via unsanitized user input
+  remediation: Use parameterized queries or prepared statements
+
+- id: A03-002
+  category: A03:2021 - Injection
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: STRING_CONCATENATION
+        attributes:
+          contains: ^.*(SELECT|INSERT|UPDATE|DELETE|WHERE).*
+    edges: []
+  severity: High
+  description: Dynamic SQL query construction
+  remediation: Use parameterized queries instead of string concatenation
+
+- id: A03-003
+  category: A03:2021 - Injection
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          dataType: String
+      - type: METHOD_CALL
+        attributes:
+          name: ^(eval|execute|Runtime\.exec|ProcessBuilder).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: Critical
+  description: Command injection via user input
+  remediation: Validate and sanitize input, use allowlists
+
+- id: A03-004
+  category: A03:2021 - Injection
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(setAttribute|setProperty|setParameter).*
+      - type: PARAMETER
+        attributes:
+          source: ^(request|user).*
+    edges:
+      - type: USES
+        source_type: METHOD_CALL
+        target_type: PARAMETER
+  severity: Medium
+  description: LDAP injection potential
+  remediation: Escape LDAP special characters
+
+- id: A03-005
+  category: A03:2021 - Injection
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          name: ^(xml|xpath|query).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(evaluate|compile|selectNodes).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: High
+  description: XPath injection vulnerability
+  remediation: Use parameterized XPath queries
+
+# ==========================================
+# A04:2021 - Insecure Design
+# ==========================================
+
+- id: A04-001
+  category: A04:2021 - Insecure Design
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD
+        attributes:
+          name: ^(login|authenticate).*
+      - type: CONDITION
+        attributes:
+          operator: ^(==|equals).*
+    edges:
+      - type: CONTAINS
+        source_type: METHOD
+        target_type: CONDITION
+  severity: Medium
+  description: Authentication without rate limiting
+  remediation: Implement rate limiting and account lockout mechanisms
+
+- id: A04-002
+  category: A04:2021 - Insecure Design
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: METHOD
+        attributes:
+          name: ^(resetPassword|forgotPassword).*
+        modifiers: ^.*public.*
+    edges: []
+  severity: High
+  description: Password reset without proper verification
+  remediation: Implement secure password reset with proper token validation
+
+- id: A04-003
+  category: A04:2021 - Insecure Design
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          name: ^(amount|price|quantity).*
+      - type: FIELD
+        attributes:
+          modifiers: ^.*public.*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: FIELD
+  severity: High
+  description: Business logic bypass via parameter manipulation
+  remediation: Implement server-side validation for all business rules
+
+- id: A04-004
+  category: A04:2021 - Insecure Design
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(setTimeout|setMaxInactiveInterval).*
+      - type: LITERAL
+        attributes:
+          value: ^([0-9]{7,}|-1).*
+    edges:
+      - type: USES
+        source_type: METHOD_CALL
+        target_type: LITERAL
+  severity: Medium
+  description: Excessive session timeout values
+  remediation: Set appropriate session timeout values
+
+# ==========================================
+# A05:2021 - Security Misconfiguration
+# ==========================================
+
+- id: A05-001
+  category: A05:2021 - Security Misconfiguration
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: ANNOTATION
+        attributes:
+          name: ^.*@CrossOrigin.*
+          value: ^.*(origins\s*=\s*"\*"|allowedOrigins\s*=\s*"\*").*
+    edges: []
+  severity: High
+  description: CORS misconfiguration allowing all origins
+  remediation: Specify allowed origins explicitly
+
+- id: A05-002
+  category: A05:2021 - Security Misconfiguration
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(setDebug|setVerbose|enableDebug).*
+      - type: LITERAL
+        attributes:
+          value: ^(true|1|enabled).*
+    edges:
+      - type: USES
+        source_type: METHOD_CALL
+        target_type: LITERAL
+  severity: Medium
+  description: Debug mode enabled in production
+  remediation: Disable debug mode in production environments
+
+- id: A05-003
+  category: A05:2021 - Security Misconfiguration
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: FIELD
+        attributes:
+          annotations: ^.*@Value.*
+          name: ^(password|secret|key|token).*
+    edges: []
+  severity: High
+  description: Sensitive configuration in plain text
+  remediation: Use encrypted configuration or environment variables
+
+- id: A05-004
+  category: A05:2021 - Security Misconfiguration
+  graph: dfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(setHeader|addHeader).*
+      - type: LITERAL
+        attributes:
+          value: ^(X-Frame-Options|X-Content-Type-Options|X-XSS-Protection).*
+    edges:
+      - type: USES
+        source_type: METHOD_CALL
+        target_type: LITERAL
+  severity: Medium
+  description: Missing security headers
+  remediation: Add appropriate security headers
+
+# ==========================================
+# A06:2021 - Vulnerable Components
+# ==========================================
+
+- id: A06-001
+  category: A06:2021 - Vulnerable and Outdated Components
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: IMPORT
+        attributes:
+          package: ^(commons-collections|struts|log4j-core).*
+          version: ^(3\.|1\.|2\.1[0-4]).*
+    edges: []
+  severity: Critical
+  description: Known vulnerable dependency versions
+  remediation: Update to latest secure versions
+
+- id: A06-002
+  category: A06:2021 - Vulnerable and Outdated Components
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(deserialize|readObject|fromXML).*
+      - type: CLASS
+        attributes:
+          name: ^(ObjectInputStream|XMLDecoder|XStream).*
+    edges:
+      - type: INSTANCE_OF
+        source_type: METHOD_CALL
+        target_type: CLASS
+  severity: High
+  description: Unsafe deserialization of untrusted data
+  remediation: Validate and sanitize serialized data
+
+- id: A06-003
+  category: A06:2021 - Vulnerable and Outdated Components
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: DEPENDENCY
+        attributes:
+          scope: ^(compile|runtime).*
+          version: ^.*-SNAPSHOT.*
+    edges: []
+  severity: Medium
+  description: Snapshot dependencies in production
+  remediation: Use stable release versions
+
+# ==========================================
+# A07:2021 - Authentication Failures
+# ==========================================
+
+- id: A07-001
+  category: A07:2021 - Identification and Authentication Failures
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          name: ^(password|pwd|pass).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(equals|==|compareTo).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: High
+  description: Plain text password comparison
+  remediation: Use secure password hashing with salt
+
+- id: A07-002
+  category: A07:2021 - Identification and Authentication Failures
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD
+        attributes:
+          name: ^(login|authenticate).*
+      - type: CONDITION
+        attributes:
+          negated: false
+    edges:
+      - type: CONTROLS
+        source_type: METHOD
+        target_type: CONDITION
+  severity: Medium
+  description: No account lockout mechanism
+  remediation: Implement account lockout after failed attempts
+
+- id: A07-003
+  category: A07:2021 - Identification and Authentication Failures
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(setSessionId|createSession).*
+      - type: LITERAL
+        attributes:
+          value: ^(admin|test|default|session).*
+    edges: []
+  severity: High
+  description: Predictable session identifiers
+  remediation: Use cryptographically secure random session IDs
+
+- id: A07-004
+  category: A07:2021 - Identification and Authentication Failures
+  graph: dfg
+  pattern:
+    nodes:
+      - type: FIELD
+        attributes:
+          name: ^(password|credential).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(store|save|persist|cache).*
+    edges:
+      - type: DATA_FLOW
+        source_type: FIELD
+        target_type: METHOD_CALL
+  severity: Critical
+  description: Credentials stored without encryption
+  remediation: Hash and salt passwords before storage
+
+# ==========================================
+# A08:2021 - Software Integrity Failures
+# ==========================================
+
+- id: A08-001
+  category: A08:2021 - Software and Data Integrity Failures
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(loadLibrary|load|Runtime\.exec).*
+      - type: PARAMETER
+        attributes:
+          source: ^(external|remote|download).*
+    edges: []
+  severity: Critical
+  description: Loading code from untrusted sources
+  remediation: Verify integrity and authenticity of external code
+
+- id: A08-002
+  category: A08:2021 - Software and Data Integrity Failures
+  graph: dfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(deserialize|fromJSON|fromXML).*
+      - type: PARAMETER
+        attributes:
+          source: ^(request|external|untrusted).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: High
+  description: Deserialization without integrity checks
+  remediation: Validate data integrity before deserialization
+
+- id: A08-003
+  category: A08:2021 - Software and Data Integrity Failures
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(update|patch|install).*
+      - type: CONDITION
+        attributes:
+          operator: ^(checksum|hash|signature).*
+    edges:
+      - type: INVOKES
+        source_type: METHOD_CALL
+        target_type: CONDITION
+  severity: Medium
+  description: Software updates without integrity verification
+  remediation: Verify checksums or signatures before updates
+
+# ==========================================
+# A09:2021 - Logging Failures
+# ==========================================
+
+- id: A09-001
+  category: A09:2021 - Security Logging and Monitoring Failures
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD
+        attributes:
+          name: ^(login|authenticate|authorize).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(log|info|warn|error|debug).*
+    edges:
+      - type: INVOKES
+        source_type: METHOD
+        target_type: METHOD_CALL
+  severity: Medium
+  description: Security events without proper logging
+  remediation: Log all authentication and authorization events
+
+- id: A09-002
+  category: A09:2021 - Security Logging and Monitoring Failures
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          name: ^(password|token|secret|key).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(log|print|debug|info).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: High
+  description: Sensitive data in log messages
+  remediation: Sanitize sensitive data before logging
+
+- id: A09-003
+  category: A09:2021 - Security Logging and Monitoring Failures
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: TRY_CATCH
+        attributes:
+          catchType: ^(Exception|Throwable).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(printStackTrace|print).*
+    edges:
+      - type: CONTAINS
+        source_type: TRY_CATCH
+        target_type: METHOD_CALL
+  severity: Medium
+  description: Exception information exposure
+  remediation: Log exceptions securely without exposing system details
+
+- id: A09-004
+  category: A09:2021 - Security Logging and Monitoring Failures
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD
+        attributes:
+          name: ^(handleError|onError|catch).*
+      - type: RETURN
+        attributes:
+          value: ^(null|empty|default).*
+    edges:
+      - type: CONTAINS
+        source_type: METHOD
+        target_type: RETURN
+  severity: Low
+  description: Silent failure without logging
+  remediation: Log all error conditions appropriately
+
+# ==========================================
+# A10:2021 - SSRF
+# ==========================================
+
+- id: A10-001
+  category: A10:2021 - Server-Side Request Forgery
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          source: ^(request|user|input).*
+          dataType: ^(String|URL|URI).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(connect|openConnection|get|post|fetch).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: Critical
+  description: Server-Side Request Forgery via user input
+  remediation: Validate and sanitize URLs, use allowlists
+
+- id: A10-002
+  category: A10:2021 - Server-Side Request Forgery
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(HttpClient|URLConnection|RestTemplate).*
+      - type: PARAMETER
+        attributes:
+          value: ^(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.).*
+    edges:
+      - type: USES
+        source_type: METHOD_CALL
+        target_type: PARAMETER
+  severity: High
+  description: HTTP requests to internal network addresses
+  remediation: Block requests to internal IP ranges
+
+- id: A10-003
+  category: A10:2021 - Server-Side Request Forgery
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(redirect|forward|sendRedirect).*
+      - type: PARAMETER
+        attributes:
+          source: ^(request|user).*
+    edges: []
+  severity: Medium
+  description: Open redirect vulnerability
+  remediation: Validate redirect URLs against allowlist
+
+- id: A10-004
+  category: A10:2021 - Server-Side Request Forgery
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          name: ^(callback|webhook|url).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(invoke|call|execute|request).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: High
+  description: Callback URL manipulation
+  remediation: Validate callback URLs against trusted domains
+
+# ==========================================
+# Cross-Cutting Security Patterns
+# ==========================================
+
+- id: SEC-001
+  category: General Security
+  graph: codegraph
+  pattern:
+    nodes:
+      - type: FIELD
+        attributes:
+          modifiers: ^.*public.*
+          dataType: ^(String|char\[\]).*
+          name: ^(api_key|secret|password|token).*
+    edges: []
+  severity: High
+  description: Sensitive data exposed as public fields
+  remediation: Make sensitive fields private and provide controlled access
+
+- id: SEC-002
+  category: General Security
+  graph: cfg
+  pattern:
+    nodes:
+      - type: METHOD_CALL
+        attributes:
+          name: ^(Thread\.sleep|wait|delay).*
+      - type: LITERAL
+        attributes:
+          value: ^([0-9]{4,}).*
+    edges:
+      - type: USES
+        source_type: METHOD_CALL
+        target_type: LITERAL
+  severity: Low
+  description: Potential DoS via excessive delays
+  remediation: Limit maximum delay values
+
+- id: SEC-003
+  category: General Security
+  graph: dfg
+  pattern:
+    nodes:
+      - type: PARAMETER
+        attributes:
+          source: ^(file|path|directory).*
+      - type: METHOD_CALL
+        attributes:
+          name: ^(createFile|mkdir|delete|execute).*
+    edges:
+      - type: DATA_FLOW
+        source_type: PARAMETER
+        target_type: METHOD_CALL
+  severity: High
+  description: File system operations with user input
+  remediation: Validate and sanitize file paths, use sandboxing

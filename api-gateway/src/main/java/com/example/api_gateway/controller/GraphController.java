@@ -83,16 +83,6 @@ public class GraphController {
         return Mono.just(ResponseEntity.ok(taintResult.toString()));
     }
 
-    @GetMapping("/taint_analyse")
-    public Mono<ResponseEntity<String>> getTaintAnalyse(@RequestParam String scanId) {
-        JSONObject taintResult = taintAnalyseService.analyzeCodeGraph(scanId);
-        if (taintResult == null) {
-            return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body("Taint analysis results not found for scanId: " + scanId));
-        }
-        return Mono.just(ResponseEntity.ok(taintResult.toString()));
-    }
-
     @GetMapping("/health")
     public Mono<ResponseEntity<String>> health() {
         return Mono.just(ResponseEntity.ok("API Gateway is running"));

@@ -1,0 +1,4 @@
+# config.yaml
+rules_dir: "rules/"           # Directory containing OWASP rule files
+graphs_dir: "../output"         # Directory containing AST/CFG/DFG files
+output_path: "report.json"   # Output vulnerability report

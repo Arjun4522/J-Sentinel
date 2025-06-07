@@ -31,7 +31,7 @@ curl -u user:secret http://localhost:8080/api/health
 
 curl -u user:secret http://localhost:8080/api/cfg?scanId=<scanId>
 
-curl -u user:secret http://localhost:8080/api/dfgscanId=<scanId>
+curl -u user:secret http://localhost:8080/api/dfg?scanId=<scanId>
 
 curl -u user:secret http://localhost:8080/api/taint_analyse?scanId=<scanId>
 
