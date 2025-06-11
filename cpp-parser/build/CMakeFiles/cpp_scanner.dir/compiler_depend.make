@@ -557,8 +557,6 @@ CMakeFiles/cpp_scanner.dir/cpp_scanner.cpp.o: ../cpp_scanner.cpp \
   /usr/lib/llvm-14/include/clang/AST/StmtOpenMP.h \
   /usr/lib/llvm-14/include/clang/ASTMatchers/ASTMatchersInternal.h \
   /usr/lib/llvm-14/include/clang/ASTMatchers/ASTMatchersMacros.h \
-  /usr/lib/llvm-14/include/clang/ASTMatchers/ASTMatchFinder.h \
-  /usr/lib/llvm-14/include/llvm/Support/Timer.h \
   /usr/lib/llvm-14/include/clang/Frontend/FrontendActions.h \
   /usr/lib/llvm-14/include/clang/Frontend/CompilerInstance.h \
   /usr/lib/llvm-14/include/clang/Frontend/CompilerInvocation.h \
@@ -678,39 +676,8 @@ CMakeFiles/cpp_scanner.dir/cpp_scanner.cpp.o: ../cpp_scanner.cpp \
   /usr/include/c++/11/bits/indirect_array.h \
   /usr/include/c++/11/version \
   /usr/include/c++/11/optional \
-  /usr/include/c++/11/any \
-  /usr/include/c++/11/regex \
-  /usr/include/c++/11/bits/regex_constants.h \
-  /usr/include/c++/11/bits/regex_error.h \
-  /usr/include/c++/11/bits/regex_automaton.h \
-  /usr/include/c++/11/bits/regex_automaton.tcc \
-  /usr/include/c++/11/bits/regex_scanner.h \
-  /usr/include/c++/11/bits/regex_scanner.tcc \
-  /usr/include/c++/11/bits/regex_compiler.h \
-  /usr/include/c++/11/bits/regex_compiler.tcc \
-  /usr/include/c++/11/bits/regex.h \
-  /usr/include/c++/11/bits/regex.tcc \
-  /usr/include/c++/11/bits/regex_executor.h \
-  /usr/include/c++/11/bits/regex_executor.tcc
+  /usr/include/c++/11/any
 
-
-/usr/include/c++/11/bits/regex_executor.tcc:
-
-/usr/include/c++/11/bits/regex.tcc:
-
-/usr/include/c++/11/bits/regex.h:
-
-/usr/include/c++/11/bits/regex_compiler.tcc:
-
-/usr/include/c++/11/bits/regex_compiler.h:
-
-/usr/include/c++/11/bits/regex_scanner.h:
-
-/usr/include/c++/11/bits/regex_automaton.tcc:
-
-/usr/include/c++/11/bits/regex_constants.h:
-
-/usr/include/c++/11/regex:
 
 /usr/include/c++/11/any:
 
@@ -876,10 +843,6 @@ CMakeFiles/cpp_scanner.dir/cpp_scanner.cpp.o: ../cpp_scanner.cpp \
 
 /usr/lib/llvm-14/include/clang/Frontend/FrontendActions.h:
 
-/usr/lib/llvm-14/include/llvm/Support/Timer.h:
-
-/usr/lib/llvm-14/include/clang/ASTMatchers/ASTMatchFinder.h:
-
 /usr/lib/llvm-14/include/clang/ASTMatchers/ASTMatchersMacros.h:
 
 /usr/lib/llvm-14/include/clang/ASTMatchers/ASTMatchersInternal.h:
@@ -958,8 +921,6 @@ CMakeFiles/cpp_scanner.dir/cpp_scanner.cpp.o: ../cpp_scanner.cpp \
 
 /usr/include/stdio.h:
 
-/usr/include/c++/11/bits/regex_executor.h:
-
 /usr/lib/llvm-14/include/clang/AST/ExprObjC.h:
 
 /usr/lib/llvm-14/include/clang/AST/CommentCommandTraits.h:
@@ -1009,8 +970,6 @@ CMakeFiles/cpp_scanner.dir/cpp_scanner.cpp.o: ../cpp_scanner.cpp \
 /usr/include/c++/11/bits/streambuf_iterator.h:
 
 /usr/include/ctype.h:
-
-/usr/include/c++/11/bits/regex_scanner.tcc:
 
 /usr/include/c++/11/bits/stream_iterator.h:
 
@@ -1169,8 +1128,6 @@ CMakeFiles/cpp_scanner.dir/cpp_scanner.cpp.o: ../cpp_scanner.cpp \
 /usr/include/x86_64-linux-gnu/bits/typesizes.h:
 
 /usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
-
-/usr/include/c++/11/bits/regex_error.h:
 
 /usr/include/c++/11/atomic:
 
@@ -1883,8 +1840,6 @@ CMakeFiles/cpp_scanner.dir/cpp_scanner.cpp.o: ../cpp_scanner.cpp \
 /usr/lib/llvm-14/include/clang/Basic/PPCTypes.def:
 
 /usr/lib/llvm-14/include/clang/AST/BuiltinTypes.def:
-
-/usr/include/c++/11/bits/regex_automaton.h:
 
 /usr/lib/llvm-14/include/clang/Basic/AttrSubjectMatchRules.h:
 

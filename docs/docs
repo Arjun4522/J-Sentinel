@@ -56,6 +56,6 @@ cmake ../
 
 make
 
-/cpp_scanner ../test_code.cpp --local --output=../../output/codegraph_cpp.json --
+./cpp_scanner ../test_code.cpp --local --output=../../output/codegraph_cpp.json --
 
 ./cpp_scanner ../test_code.cpp --
