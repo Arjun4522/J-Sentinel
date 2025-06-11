@@ -59,13 +59,15 @@ public class GraphStorageService {
         }
         JSONObject dfg = new JSONObject();
         dfg.put("scanId", scanId);
+        dfg.put("type", "DataFlowGraph");
 
         JSONArray nodes = codeGraph.getJSONArray("nodes");
         JSONArray dfgNodes = new JSONArray();
         for (int i = 0; i < nodes.length(); i++) {
             JSONObject node = nodes.getJSONObject(i);
             String type = node.getString("type");
-            if (type.equals("LOCAL_VARIABLE") || type.equals("PARAMETER") || type.equals("ASSIGNMENT") || type.equals("METHOD_CALL")) {
+            if (type.equals("LOCAL_VARIABLE") || type.equals("PARAMETER") || type.equals("FIELD") ||
+                type.equals("ASSIGNMENT") || type.equals("METHOD_CALL") || type.equals("FIELD_ACCESS")) {
                 dfgNodes.put(node);
             }
         }
@@ -74,13 +76,20 @@ public class GraphStorageService {
         JSONArray dfgEdges = new JSONArray();
         for (int i = 0; i < edges.length(); i++) {
             JSONObject edge = edges.getJSONObject(i);
-            if (edge.getString("type").equals("DATA_FLOW")) {
+            String type = edge.getString("type");
+            if (type.equals("DATA_FLOW") || type.equals("DECLARES") || type.equals("INVOKES") || type.equals("ACCESSES")) {
                 dfgEdges.put(edge);
             }
         }
 
         dfg.put("nodes", dfgNodes);
         dfg.put("edges", dfgEdges);
+
+        JSONObject stats = new JSONObject();
+        stats.put("totalNodes", dfgNodes.length());
+        stats.put("totalEdges", dfgEdges.length());
+        dfg.put("statistics", stats);
+
         return dfg;
     }
 

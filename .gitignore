@@ -31,3 +31,5 @@ api-gateway/target/
 # Other generated files
 *.bak
 *.swp
+*.zip
+*.7z

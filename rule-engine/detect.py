@@ -1,353 +1,490 @@
-import json
 import yaml
-from pathlib import Path
-from typing import List, Dict, Any
-import uuid
-from datetime import datetime
-import sys
+import json
+import glob
 import re
+from typing import List, Dict, Any, Set, Tuple, Optional
+from pathlib import Path
+from dataclasses import dataclass
+from collections import defaultdict
+import logging
 
-class VulnerabilityRule:
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@dataclass
+class Rule:
     def __init__(self, rule_data: Dict[str, Any]):
-        self.rule_id = rule_data.get("rule_id")
-        self.name = rule_data.get("name")
-        self.category = rule_data.get("category")
-        self.owasp_category = rule_data.get("owasp_category")
-        self.severity = rule_data.get("severity")
-        self.description = rule_data.get("description")
-        pattern = rule_data.get("pattern", {})
-        self.source_types = pattern.get("source_types", [])
-        self.source_names = pattern.get("source_names", [])
-        self.sink_types = pattern.get("sink_types", [])
-        self.sink_names = pattern.get("sink_names", [])
-        self.sink_patterns = pattern.get("sink_patterns", [])
-        self.sink_scopes = pattern.get("sink_scopes", [])
-        self.path_constraints = pattern.get("path_constraints", [])
+        self.id = rule_data["id"]
+        self.category = rule_data["category"]
+        self.graph = rule_data["graph"]
+        self.pattern = rule_data["pattern"]
+        self.severity = rule_data["severity"]
+        self.description = rule_data["description"]
+        self.remediation = rule_data["remediation"]
 
-class VulnerabilityFinding:
-    def __init__(
-        self,
-        rule: VulnerabilityRule,
-        taint_path: Dict[str, Any],
-        confidence: float,
-        risk_score: float,
-        match_reasons: List[str],
-        remediation: str,
-    ):
-        self.rule_id = rule.rule_id
-        self.name = rule.name
-        self.owasp_category = rule.owasp_category
+@dataclass
+class Vulnerability:
+    def __init__(self, rule: Rule, location: str, details: str, context: Dict[str, Any] = None):
+        self.rule_id = rule.id
+        self.category = rule.category
         self.severity = rule.severity
-        self.description = rule.description
-        self.taint_path = taint_path
-        self.confidence = confidence
-        self.risk_score = risk_score
-        self.match_reasons = match_reasons
-        self.remediation = remediation
+        self.location = location
+        self.details = rule.description
+        self.remediation = rule.remediation
+        self.context = context or {}
 
-class RuleEngine:
-    def __init__(self, rules_file: str):
-        self.rules = self.load_rules(rules_file)
-        with open(rules_file, "r") as f:
-            config = yaml.safe_load(f)
-        self.severity_weights = config.get("risk_assessment", {}).get("severity_weights", {})
-        self.confidence_factors = config.get("risk_assessment", {}).get("confidence_factors", {})
-        self.sensitive_data_patterns = config.get("pattern_extensions", {}).get("sensitive_data_patterns", {})
-        self.sanitization_functions = config.get("pattern_extensions", {}).get("sanitization_functions", {})
-        self.context_multipliers = config.get("pattern_extensions", {}).get("context_rules", {})
+class EnhancedVulnerabilityDetector:
+    def __init__(self, config_path: str):
+        self.config = self.load_config(config_path)
+        self.rules = self.load_rules()
+        self.graphs = self.load_graphs()
+        self.node_cache = {}  # Cache for faster node lookups
+        self.edge_cache = {}  # Cache for edge lookups
+        self._build_caches()
 
-    def load_rules(self, rules_file: str) -> List[VulnerabilityRule]:
-        with open(rules_file, "r") as f:
-            data = yaml.safe_load(f)
-        return [VulnerabilityRule(rule) for rule in data.get("rules", [])]
+    def load_config(self, config_path: str) -> Dict[str, Any]:
+        """Load configuration from YAML file"""
+        try:
+            with open(config_path, "r") as f:
+                return yaml.safe_load(f)
+        except FileNotFoundError:
+            logger.error(f"Config file not found: {config_path}")
+            raise
+        except yaml.YAMLError as e:
+            logger.error(f"Error parsing config file: {e}")
+            raise
 
-    def load_graph_data(self, folder: str) -> Dict[str, Any]:
-        folder_path = Path(folder)
-        data = {}
-        for file in ["codegraph.json", "taint_analysis.json", "cfg.json", "dfg.json"]:
-            file_path = folder_path / file
-            if file_path.exists():
-                with open(file_path, "r") as f:
-                    data[file.replace(".json", "")] = json.load(f)
-        return data
+    def load_rules(self) -> List[Rule]:
+        """Load security rules from YAML files"""
+        rules = []
+        rules_pattern = self.config.get("rules_dir", "rules") + "/*.yaml"
+        
+        for rule_file in glob.glob(rules_pattern):
+            try:
+                with open(rule_file, "r") as f:
+                    rule_data = yaml.safe_load(f)
+                    if isinstance(rule_data, list):
+                        rules.extend(Rule(rule) for rule in rule_data)
+                    else:
+                        rules.append(Rule(rule_data))
+                logger.info(f"Loaded rules from {rule_file}")
+            except Exception as e:
+                logger.error(f"Error loading rules from {rule_file}: {e}")
+        
+        logger.info(f"Total rules loaded: {len(rules)}")
+        return rules
 
-    def analyze_vulnerabilities(self, graph_data: Dict[str, Any]) -> List[VulnerabilityFinding]:
+    def load_graphs(self) -> Dict[str, Dict]:
+        """Load code analysis graphs (AST, CFG, DFG)"""
+        graphs = {}
+        graphs_pattern = self.config.get("graphs_dir", "graphs") + "/*.json"
+        
+        for graph_file in glob.glob(graphs_pattern):
+            try:
+                graph_type = Path(graph_file).stem
+                with open(graph_file, "r") as f:
+                    graphs[graph_type] = json.load(f)
+                logger.info(f"Loaded {graph_type} graph from {graph_file}")
+            except Exception as e:
+                logger.error(f"Error loading graph from {graph_file}: {e}")
+        
+        return graphs
+
+    def _build_caches(self):
+        """Build caches for faster node and edge lookups"""
+        for graph_type, graph in self.graphs.items():
+            # Build node cache by type and ID
+            self.node_cache[graph_type] = {
+                'by_type': defaultdict(list),
+                'by_id': {}
+            }
+            
+            nodes = graph.get("nodes", [])
+            for node in nodes:
+                node_type = node.get("type")
+                node_id = node.get("id")
+                
+                if node_type:
+                    self.node_cache[graph_type]['by_type'][node_type].append(node)
+                if node_id is not None:
+                    self.node_cache[graph_type]['by_id'][node_id] = node
+            
+            # Build edge cache
+            self.edge_cache[graph_type] = {
+                'by_type': defaultdict(list),
+                'by_source': defaultdict(list),
+                'by_target': defaultdict(list)
+            }
+            
+            edges = graph.get("edges", [])
+            for edge in edges:
+                edge_type = edge.get("type")
+                source = edge.get("source")
+                target = edge.get("target")
+                
+                if edge_type:
+                    self.edge_cache[graph_type]['by_type'][edge_type].append(edge)
+                if source is not None:
+                    self.edge_cache[graph_type]['by_source'][source].append(edge)
+                if target is not None:
+                    self.edge_cache[graph_type]['by_target'][target].append(edge)
+
+    def evaluate_rule(self, rule: Rule, graph: Dict) -> List[Vulnerability]:
+        """Evaluate a single rule against a graph"""
         findings = []
-        taint_data = graph_data.get("taint_analysis", {})
-        codegraph = graph_data.get("codegraph", {})
-        tainted_paths = taint_data.get("taintedPaths", [])
+        
+        if rule.graph not in self.graphs:
+            return findings
 
-        for path in tainted_paths:
-            for rule in self.rules:
-                finding = self.evaluate_rule(rule, path, codegraph)
-                if finding:
-                    findings.append(finding)
+        try:
+            # Get matched nodes based on pattern
+            matched_node_sets = self._match_nodes(rule, graph)
+            
+            if not matched_node_sets:
+                return findings
 
-        # Apply false-positive filters
-        findings = self.apply_false_positive_filters(findings, codegraph)
+            # If rule has edge patterns, match them
+            if rule.pattern.get("edges"):
+                findings.extend(self._match_edges(rule, graph, matched_node_sets))
+            else:
+                # For rules without edges, create findings for matched nodes
+                findings.extend(self._create_node_findings(rule, graph, matched_node_sets))
+
+        except Exception as e:
+            logger.error(f"Error evaluating rule {rule.id}: {e}")
+
         return findings
 
-    def apply_false_positive_filters(self, findings: List[VulnerabilityFinding], codegraph: Dict[str, Any]) -> List[VulnerabilityFinding]:
-        filtered_findings = []
-        for finding in findings:
-            # Skip findings for irrelevant categories (e.g., SQL/Command Injection without database/command sinks)
-            if finding.owasp_category == "A03:2021" and finding.rule_id in ["OWASP-A03-001", "OWASP-A03-003"]:
-                sink_name = finding.taint_path["sinkName"].lower()
-                if not any(pattern in sink_name for pattern in ["execute", "query", "createQuery", "prepareStatement", "Runtime.exec", "ProcessBuilder", "executeCommand", "system"]):
-                    continue
-            # Skip deserialization/command execution findings without specific sinks
-            if finding.owasp_category in ["A06:2021", "A08:2021"]:
-                sink_name = finding.taint_path["sinkName"].lower()
-                if not any(pattern in sink_name for pattern in ["readObject", "deserialize", "fromXML", "fromJSON", "eval", "compile", "loadClass", "invoke"]):
-                    continue
-            filtered_findings.append(finding)
-        return filtered_findings
-
-    def evaluate_rule(
-        self, rule: VulnerabilityRule, taint_path: Dict[str, Any], codegraph: Dict[str, Any]
-    ) -> VulnerabilityFinding:
-        confidence = 0.0
-        match_reasons = []
-
-        # Check source
-        source_node = taint_path["pathNodes"][0]
-        source_name = source_node.get("name", "").lower()
-        source_type = source_node.get("type", "")
-
-        if rule.source_types and source_type not in rule.source_types:
-            return None
-        if rule.source_types:
-            confidence += 0.3
-            match_reasons.append(f"Source type matches: {source_type}")
-
-        if rule.source_names and any(name.lower() in source_name for name in rule.source_names):
-            confidence += 0.2
-            match_reasons.append(f"Source name matches: {source_name}")
-
-        # Check sink
-        sink_node = taint_path["pathNodes"][-1]
-        sink_name = sink_node.get("name", "").lower()
-        sink_type = sink_node.get("type", "")
-        sink_scope = sink_node.get("scope", "").lower()
-
-        # Enhanced sink matching logic
-        sink_matches = False
-        for name in rule.sink_names:
-            if name.lower() in sink_name:
-                confidence += 0.4
-                match_reasons.append(f"Sink name matches: {name}")
-                sink_matches = True
-                break
-
-        for pattern in rule.sink_patterns:
-            if pattern.endswith("*"):
-                if sink_name.startswith(pattern[:-1].lower()):
-                    confidence += 0.4
-                    match_reasons.append(f"Sink pattern matches: {pattern}")
-                    sink_matches = True
-                    break
-            elif pattern.lower() in sink_name:
-                confidence += 0.4
-                match_reasons.append(f"Sink pattern matches: {pattern}")
-                sink_matches = True
-                break
-
-        if not sink_matches and rule.sink_types and sink_type in rule.sink_types:
-            confidence += 0.2
-            match_reasons.append(f"Sink type matches: {sink_type}")
-            sink_matches = True
-
-        if rule.sink_scopes and any(scope.lower() in sink_scope for scope in rule.sink_scopes):
-            confidence += 0.1
-            match_reasons.append(f"Sink scope matches: {sink_scope}")
-            sink_matches = True
-
-        if not sink_matches:
-            return None
-
-        # Enhanced sanitization detection
-        sanitization_found = False
-        for node in taint_path["pathNodes"]:
-            node_name = node.get("name", "").lower()
+    def _match_nodes(self, rule: Rule, graph: Dict) -> List[List[Dict]]:
+        """Match nodes based on rule pattern"""
+        matched_sets = []
+        graph_type = rule.graph
+        
+        for node_pattern in rule.pattern.get("nodes", []):
+            node_type = node_pattern.get("type")
+            attributes = node_pattern.get("attributes", {})
             
-            # Check against path constraints
-            for constraint in rule.path_constraints:
-                not_contains = constraint.get("not_contains", [])
-                if isinstance(not_contains, str):
-                    not_contains = [not_contains]
-                for sanitizer in not_contains:
-                    if sanitizer.lower() in node_name:
-                        confidence *= 0.2  # Stronger reduction for sanitization
-                        match_reasons.append(f"Sanitization detected: {sanitizer}")
-                        sanitization_found = True
-                        break
+            matched_nodes = []
             
-            # Check against sanitization functions with regex for specific patterns
-            for category, functions in self.sanitization_functions.items():
-                for func in functions:
-                    # Check for method calls or variable names indicating sanitization
-                    if re.search(rf'\b{func.lower()}\b|\bsanitized\b', node_name):
-                        confidence *= 0.2  # Stronger reduction for sanitization
-                        match_reasons.append(f"Sanitization function detected: {func} ({category})")
-                        sanitization_found = True
-                        break
+            # Use cache for faster lookup
+            candidate_nodes = self.node_cache.get(graph_type, {}).get('by_type', {}).get(node_type, [])
+            
+            for node in candidate_nodes:
+                if self._match_attributes(node, attributes):
+                    matched_nodes.append(node)
+            
+            if matched_nodes:
+                matched_sets.append(matched_nodes)
+        
+        return matched_sets
 
-        # Adjust severity for logging-related issues
-        if rule.owasp_category == "A03:2021" and rule.rule_id == "OWASP-A03-002":  # Log Injection/Forging
-            if not sanitization_found:
-                rule.severity = "MEDIUM"  # Default to Medium unless sensitive data is detected
-            else:
-                rule.severity = "LOW"  # Downgrade to Low if sanitized
+    def _match_edges(self, rule: Rule, graph: Dict, matched_node_sets: List[List[Dict]]) -> List[Vulnerability]:
+        """Match edges based on rule pattern"""
+        findings = []
+        graph_type = rule.graph
+        
+        for edge_pattern in rule.pattern.get("edges", []):
+            edge_type = edge_pattern.get("type")
+            source_type = edge_pattern.get("source_type")
+            target_type = edge_pattern.get("target_type")
+            
+            # Get edges of the specified type
+            candidate_edges = self.edge_cache.get(graph_type, {}).get('by_type', {}).get(edge_type, [])
+            
+            for edge in candidate_edges:
+                source_node = self.node_cache.get(graph_type, {}).get('by_id', {}).get(edge.get("source"))
+                target_node = self.node_cache.get(graph_type, {}).get('by_id', {}).get(edge.get("target"))
+                
+                if (source_node and target_node and
+                    source_node.get("type") == source_type and
+                    target_node.get("type") == target_type):
+                    
+                    # Check if nodes match the pattern requirements
+                    if self._validate_edge_nodes(rule, source_node, target_node, matched_node_sets):
+                        location = self._get_enhanced_location(graph, target_node)
+                        context = self._build_context(rule, source_node, target_node, edge)
+                        
+                        findings.append(Vulnerability(
+                            rule,
+                            location,
+                            f"Found {edge_type} from {source_type} to {target_type}",
+                            context
+                        ))
+        
+        return findings
 
-        # Enhanced sensitive data detection
-        for category, patterns in self.sensitive_data_patterns.items():
-            for pattern in patterns:
-                if pattern.lower() in source_name:
-                    confidence += 0.2
-                    match_reasons.append(f"Sensitive data pattern detected: {pattern} ({category})")
-                    if rule.owasp_category == "A03:2021" and rule.rule_id == "OWASP-A03-002":
-                        rule.severity = "HIGH"  # Upgrade to High for sensitive data in logs
-                    break
+    def _validate_edge_nodes(self, rule: Rule, source_node: Dict, target_node: Dict, 
+                           matched_node_sets: List[List[Dict]]) -> bool:
+        """Validate that edge nodes satisfy the rule requirements"""
+        # Check if source and target nodes are in the matched sets
+        source_in_set = any(source_node in node_set for node_set in matched_node_sets)
+        target_in_set = any(target_node in node_set for node_set in matched_node_sets)
+        
+        return source_in_set or target_in_set
 
-        # Apply context multiplier
-        context = codegraph.get("context", "general")
-        context_multiplier = next((c["multiplier"] for c in self.context_multipliers if c["context"] == context), 1.0)
-        confidence *= context_multiplier
+    def _create_node_findings(self, rule: Rule, graph: Dict, 
+                            matched_node_sets: List[List[Dict]]) -> List[Vulnerability]:
+        """Create findings for rules that only match nodes (no edges)"""
+        findings = []
+        
+        for node_set in matched_node_sets:
+            for node in node_set:
+                location = self._get_enhanced_location(graph, node)
+                context = self._build_node_context(rule, node)
+                
+                findings.append(Vulnerability(
+                    rule,
+                    location,
+                    f"Found {node.get('type')} with matching attributes",
+                    context
+                ))
+        
+        return findings
 
-        # Apply path complexity
-        path_length = len(taint_path["pathNodes"])
-        complexity_type = (
-            "direct_flow" if path_length == 2 else
-            "single_transformation" if path_length == 3 else
-            "multiple_transformations"
-        )
-        confidence *= self.confidence_factors.get(complexity_type, 0.5)
+    def _match_attributes(self, node: Dict, attributes: Dict) -> bool:
+        """Enhanced attribute matching with support for complex patterns"""
+        for key, pattern in attributes.items():
+            node_value = node.get(key)
+            
+            if node_value is None:
+                return False
+            
+            # Convert to string for pattern matching
+            node_value_str = str(node_value)
+            
+            if isinstance(pattern, str):
+                if pattern.startswith("^"):
+                    # Regex pattern
+                    try:
+                        if not re.search(pattern, node_value_str, re.IGNORECASE):
+                            return False
+                    except re.error as e:
+                        logger.warning(f"Invalid regex pattern {pattern}: {e}")
+                        return False
+                else:
+                    # Exact match (case-insensitive for strings)
+                    if isinstance(node_value, str):
+                        if node_value.lower() != pattern.lower():
+                            return False
+                    elif node_value != pattern:
+                        return False
+            elif isinstance(pattern, (list, tuple)):
+                # Multiple possible values
+                if node_value not in pattern:
+                    return False
+            elif node_value != pattern:
+                return False
+        
+        return True
 
-        # Calculate risk score
-        severity_weight = self.severity_weights.get(rule.severity, 1.0)
-        risk_score = severity_weight * confidence
+    def _get_enhanced_location(self, graph: Dict, node: Dict) -> str:
+        """Get enhanced location information including file, line, and column"""
+        # Try to get location from node itself
+        if "location" in node:
+            loc = node["location"]
+            return f"{loc.get('file', 'Unknown')}:{loc.get('line', 0)}:{loc.get('column', 0)}"
+        
+        # Try to get from node attributes
+        file_name = node.get("file") or node.get("filename") or node.get("source")
+        line_num = node.get("line") or node.get("lineNumber") or node.get("startLine")
+        col_num = node.get("column") or node.get("columnNumber") or node.get("startColumn")
+        
+        if file_name:
+            location = str(file_name)
+            if line_num is not None:
+                location += f":{line_num}"
+                if col_num is not None:
+                    location += f":{col_num}"
+            return location
+        
+        # Fallback: search for FILE nodes in the graph
+        for graph_node in graph.get("nodes", []):
+            if graph_node.get("type") == "FILE":
+                return f"{graph_node.get('name', 'Unknown')}:0:0"
+        
+        return "Unknown:0:0"
 
-        if confidence < 0.5:
-            return None
-
-        # Generate remediation
-        remediation = self.generate_remediation(rule)
-
-        return VulnerabilityFinding(
-            rule=rule,
-            taint_path=taint_path,
-            confidence=round(confidence, 2),
-            risk_score=round(risk_score, 2),
-            match_reasons=match_reasons,
-            remediation=remediation,
-        )
-
-    def generate_remediation(self, rule: VulnerabilityRule) -> str:
-        remediation_map = {
-            "OWASP-A03-002": "Sanitize user input before logging using methods like replaceAll for special characters. Use structured logging with parameterized messages. Exclude sensitive data from logs.",
-            "OWASP-A02-001": "Encrypt or hash sensitive data before logging. Implement data classification and masking policies. Avoid logging PII or credentials.",
-            "OWASP-A03-001": "Use parameterized queries or prepared statements for SQL operations. Implement input validation and SQL injection prevention measures.",
-            "OWASP-A03-003": "Validate and sanitize all user input for system commands. Use whitelisting for allowed commands. Avoid Runtime.exec or ProcessBuilder.",
-            "OWASP-A01-001": "Implement role-based access control (RBAC). Validate user permissions before sensitive operations.",
-            "OWASP-A01-002": "Use indirect object references. Validate user ownership of resources before access.",
-            "OWASP-A02-002": "Encrypt sensitive data before storage using strong algorithms (e.g., AES-256). Avoid plain-text storage.",
-            "OWASP-A04-001": "Implement robust input validation and whitelisting for all user inputs. Use secure coding practices.",
-            "OWASP-A05-001": "Disable debug and trace logging in production. Mask sensitive information in logs.",
-            "OWASP-A06-001": "Validate and sanitize input before deserialization. Use safe deserialization libraries like Jackson with strict type checking.",
-            "OWASP-A07-001": "Use secure password hashing (e.g., bcrypt, Argon2). Avoid storing plain-text passwords.",
-            "OWASP-A08-001": "Avoid dynamic code execution (e.g., eval, compile). Validate and sanitize inputs used in code execution paths.",
-            "OWASP-A09-001": "Implement tamper-proof security logging for sensitive operations. Ensure logs capture sufficient context for auditing.",
-            "OWASP-A10-001": "Whitelist allowed URLs for server-side requests. Implement network-level protections to prevent SSRF.",
-        }
-        return remediation_map.get(rule.rule_id, "Review the identified vulnerability and implement appropriate security controls.")
-
-    def generate_report(self, findings: List[VulnerabilityFinding]) -> Dict[str, Any]:
-        severity_counts = {}
-        category_counts = {}
-        for finding in findings:
-            severity_counts[finding.severity] = severity_counts.get(finding.severity, 0) + 1
-            category_counts[finding.owasp_category] = category_counts.get(finding.owasp_category, 0) + 1
-
-        findings = sorted(findings, key=lambda f: f.risk_score, reverse=True)
-        findings_json = [
-            {
-                "ruleId": f.rule_id,
-                "name": f.name,
-                "owaspCategory": f.owasp_category,
-                "severity": f.severity,
-                "description": f.description,
-                "confidence": f.confidence,
-                "riskScore": f.risk_score,
-                "remediation": f.remediation,
-                "matchReasons": f.match_reasons,
-                "taintPath": {
-                    "sourceName": f.taint_path["sourceName"],
-                    "sinkName": f.taint_path["sinkName"],
-                    "pathLength": len(f.taint_path["pathNodes"]),
-                    "vulnerability": f.taint_path["vulnerability"],
-                },
-            }
-            for f in findings
-        ]
-
+    def _build_context(self, rule: Rule, source_node: Dict, target_node: Dict, edge: Dict) -> Dict[str, Any]:
+        """Build context information for vulnerability"""
         return {
-            "summary": {
-                "totalFindings": len(findings),
-                "severityBreakdown": severity_counts,
-                "owaspCategoryBreakdown": category_counts,
+            "source_node": {
+                "type": source_node.get("type"),
+                "name": source_node.get("name"),
+                "attributes": {k: v for k, v in source_node.items() 
+                            if k not in ["id", "type"] and not k.startswith("_")}
             },
-            "findings": findings_json,
-            "timestamp": int(datetime.now().timestamp() * 1000),
-            "analyzer": "Python Rule Engine v1.2",  # Updated version
+            "target_node": {
+                "type": target_node.get("type"),
+                "name": target_node.get("name"),
+                "attributes": {k: v for k, v in target_node.items() 
+                            if k not in ["id", "type"] and not k.startswith("_")}
+            },
+            "edge": {
+                "type": edge.get("type"),
+                "attributes": {k: v for k, v in edge.items() 
+                            if k not in ["source", "target", "type"]}
+            }
         }
 
-    def print_summary(self, findings: List[VulnerabilityFinding]):
-        print("\n🛡️ OWASP Vulnerability Analysis Results")
-        print("========================================")
+    def _build_node_context(self, rule: Rule, node: Dict) -> Dict[str, Any]:
+        """Build context information for node-only vulnerabilities"""
+        return {
+            "node": {
+                "type": node.get("type"),
+                "name": node.get("name"),
+                "attributes": {k: v for k, v in node.items() 
+                            if k not in ["id", "type"] and not k.startswith("_")}
+            }
+        }
 
-        severity_counts = {}
-        for finding in findings:
-            severity_counts[finding.severity] = severity_counts.get(finding.severity, 0) + 1
+    def _get_severity_priority(self, severity: str) -> int:
+        """Get numeric priority for severity levels"""
+        priorities = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+        return priorities.get(severity, 0)
 
-        print("\n📊 Summary:")
-        print(f"   Total Vulnerabilities: {len(findings)}")
-        print(f"   Critical: {severity_counts.get('CRITICAL', 0)}")
-        print(f"   High: {severity_counts.get('HIGH', 0)}")
-        print(f"   Medium: {severity_counts.get('MEDIUM', 0)}")
-        print(f"   Low: {severity_counts.get('LOW', 0)}")
+    def analyze(self) -> Dict:
+        """Main analysis method"""
+        logger.info("Starting vulnerability analysis...")
+        
+        all_findings = []
+        rule_stats = defaultdict(int)
+        
+        for rule in self.rules:
+            # Iterate through all available graphs instead of checking rule.graph
+            for graph_type, graph in self.graphs.items():
+                logger.debug(f"Evaluating rule {rule.id} against graph {graph_type}")
+                findings = self.evaluate_rule(rule, graph)
+                # Add graph type to context for clarity in findings
+                for finding in findings:
+                    finding.context['graph_type'] = graph_type
+                all_findings.extend(findings)
+                rule_stats[rule.category] += len(findings)
+                
+                if findings:
+                    logger.info(f"Rule {rule.id} found {len(findings)} issues in {graph_type} graph")
 
-        print("\n🔍 Top Findings:")
-        findings = sorted(findings, key=lambda f: f.risk_score, reverse=True)
-        for i, finding in enumerate(findings[:5], 1):
-            print(f"   {i}. {finding.name} ({finding.severity}) - Risk Score: {finding.risk_score}")
-            print(f"      Path: {finding.taint_path['sourceName']} → {finding.taint_path['sinkName']}")
+        # Sort findings by severity (Critical first)
+        all_findings.sort(key=lambda x: self._get_severity_priority(x.severity), reverse=True)
+
+        # Generate comprehensive report
+        report = {
+            "scanId": self._get_scan_id(),
+            "timestamp": self._get_timestamp(),
+            "summary": {
+                "totalIssues": len(all_findings),
+                "bySeverity": {
+                    severity: sum(1 for v in all_findings if v.severity == severity)
+                    for severity in ["Critical", "High", "Medium", "Low"]
+                },
+                "byCategory": dict(rule_stats),
+                "rulesEvaluated": len(self.rules) * len(self.graphs),  # Reflect multi-graph evaluation
+                "graphsAnalyzed": list(self.graphs.keys())
+            },
+            "vulnerabilities": [
+                {
+                    "ruleId": v.rule_id,
+                    "category": v.category,
+                    "severity": v.severity,
+                    "location": v.location,
+                    "details": v.details,
+                    "remediation": v.remediation,
+                    "context": v.context
+                }
+                for v in findings
+            ]
+        }
+
+        # Save report
+        output_path = self.config.get("output_path", "report.json")
+        try:
+            with open(output_path, "w") as f:
+                json.dump(report, f, indent=2, default=str)
+            logger.info(f"Vulnerability report saved to {output_path}")
+        except Exception as e:
+            logger.error(f"Error saving report: {e}")
+
+        return report
+
+        # Save report
+        output_path = self.config.get("output_path", "vulnerability_report.json")
+        try:
+            with open(output_path, "w") as f:
+                json.dump(report, f, indent=2, default=str)
+            logger.info(f"Vulnerability report saved to {output_path}")
+        except Exception as e:
+            logger.error(f"Error saving report: {e}")
+
+        return report
+
+    def _get_scan_id(self) -> str:
+        """Get scan ID from graphs or generate one"""
+        for graph in self.graphs.values():
+            if "scanId" in graph:
+                return graph["scanId"]
+        return f"scan_{hash(str(self.graphs.keys()))}"
+
+    def _get_timestamp(self) -> int:
+        """Get timestamp from graphs or current time"""
+        import time
+        for graph in self.graphs.values():
+            if "timestamp" in graph:
+                return graph["timestamp"]
+        return int(time.time())
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get detector statistics"""
+        return {
+            "rules_loaded": len(self.rules),
+            "graphs_loaded": len(self.graphs),
+            "rules_by_category": {
+                category: len([r for r in self.rules if category in r.category])
+                for category in set(r.category for r in self.rules)
+            },
+            "rules_by_severity": {
+                severity: len([r for r in self.rules if r.severity == severity])
+                for severity in set(r.severity for r in self.rules)
+            },
+            "rules_by_graph": {
+                graph: len([r for r in self.rules if r.graph == graph])
+                for graph in set(r.graph for r in self.rules)
+            }
+        }
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python rule_engine.py <output_folder> [output_file]")
-        sys.exit(1)
-
-    output_folder = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else "owasp_vulnerabilities.json"
-    rules_file = "rules.yaml"
-
+    """Main entry point"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Enhanced OWASP Top 10 Vulnerability Detector")
+    parser.add_argument("--config", default="config.yaml", help="Configuration file path")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
+    parser.add_argument("--stats", action="store_true", help="Show detector statistics")
+    
+    args = parser.parse_args()
+    
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    
     try:
-        engine = RuleEngine(rules_file)
-        graph_data = engine.load_graph_data(output_folder)
-        findings = engine.analyze_vulnerabilities(graph_data)
-        report = engine.generate_report(findings)
-
-        with open(output_file, "w") as f:
-            json.dump(report, f, indent=2)
-
-        engine.print_summary(findings)
-        print(f"\n📝 Report saved to {output_file}")
-
+        detector = EnhancedVulnerabilityDetector(args.config)
+        
+        if args.stats:
+            stats = detector.get_statistics()
+            print("Detector Statistics:")
+            print(json.dumps(stats, indent=2))
+        
+        report = detector.analyze()
+        
+        print(f"\nScan completed!")
+        print(f"Total issues found: {report['summary']['totalIssues']}")
+        print(f"By severity: {report['summary']['bySeverity']}")
+        print(f"Report saved to: {detector.config.get('output_path', 'vulnerability_report.json')}")
+        
     except Exception as e:
-        print(f"Error analyzing vulnerabilities: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+        logger.error(f"Analysis failed: {e}")
+        return 1
+    
+    return 0
 
 if __name__ == "__main__":
-    main()
+    exit(main())
