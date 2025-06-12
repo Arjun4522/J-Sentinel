@@ -65,3 +65,19 @@ make
 Rule-engine
 ------------
 python3 detect_test.py -s ../test -r rules -v --log-file debug.log --use-semgrep-registry
+
+Rule-engine/API Gateway
+------------------------
+
+
+curl -u user:secret -X POST http://localhost:8080/api/scan/trigger \
+-H "Content-Type: application/json" \
+-d '{
+  "sourceDir": "/home/arjun/Desktop/J-Sentinel/test",
+  "rulesDir": "/home/arjun/Desktop/J-Sentinel/rule-engine/rules",
+  "outputPath": "/home/arjun/Desktop/J-Sentinel/rule-engine/reports/scan_report.json",
+  "timeout": 300,
+  "useSemgrep": false
+}'
+
+curl -u user:secret -X GET http://localhost:8080/api/scan/status/<scanId>
