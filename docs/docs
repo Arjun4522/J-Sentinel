@@ -59,3 +59,9 @@ make
 ./cpp_scanner ../test_code.cpp --local --output=../../output/codegraph_cpp.json --
 
 ./cpp_scanner ../test_code.cpp --
+
+
+
+Rule-engine
+------------
+python3 detect_test.py -s ../test -r rules -v --log-file debug.log --use-semgrep-registry
