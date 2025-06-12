@@ -1,0 +1,13 @@
+rules_dir: rules
+graphs_dir: ../output
+source_dir: ../test
+output_path: vulnerability_report.json
+language_dirs:
+  java: rules/java
+  c: rules/c
+  cpp: rules/c
+  python: rules/python
+supported_extensions:
+  java: [".java", ".jsp"]
+  cpp: [".c", ".cpp", ".h", ".hpp"]
+  python: [".py"]
