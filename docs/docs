@@ -49,11 +49,8 @@ C/C++ Parser
 -------------
 
 cd cpp-parser/build
-
 rm -rf 
-
 cmake ../
-
 make
 
 ./cpp_scanner ../test_code.cpp --local --output=../../output/codegraph_cpp.json --
@@ -61,23 +58,35 @@ make
 ./cpp_scanner ../test_code.cpp --
 
 
-
 Rule-engine
 ------------
 python3 detect_test.py -s ../test -r rules -v --log-file debug.log --use-semgrep-registry
 
+./build.sh
+./detect --source=../test/
+
+
 Rule-engine/API Gateway
 ------------------------
-
 
 curl -u user:secret -X POST http://localhost:8080/api/scan/trigger \
 -H "Content-Type: application/json" \
 -d '{
   "sourceDir": "/home/arjun/Desktop/J-Sentinel/test",
   "rulesDir": "/home/arjun/Desktop/J-Sentinel/rule-engine/rules",
-  "outputPath": "/home/arjun/Desktop/J-Sentinel/rule-engine/reports/scan_report.json",
   "timeout": 300,
   "useSemgrep": false
 }'
 
-curl -u user:secret -X GET http://localhost:8080/api/scan/status/<scanId>
+
+curl -u user:secret http://localhost:8080/api/scan/status/2a96d0e7-c8d2-4efd-8526-a552fb46f421
+
+curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/report
+
+
+Tracking
+---------
+
+curl -u user:secret http://localhost:8080/api/scans
+
+curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/metadata

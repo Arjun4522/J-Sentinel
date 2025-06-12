@@ -1,6 +1,6 @@
 === VULNERABILITY SCAN SUMMARY ===
 
-Scan Timestamp: 2025-06-13T00:52:30+05:30
+Scan Timestamp: 2025-06-13T02:36:43+05:30
 Source Directory: /home/arjun/Desktop/J-Sentinel/test
 Total Vulnerabilities: 31
 
@@ -12,52 +12,52 @@ Total Vulnerabilities: 31
    CWE: CWE-915: Improperly Controlled Modification of Dynamically-Determined Object Attributes
    Remediation: Follow Semgrep recommendations
 
-2. [HIGH] rules.python.lang.security.dangerous-system-call
-   Location: test.py:33:12
-   Details: Found user-controlled data used in a system call. This could allow a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.
-   CWE: CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')
-   Remediation: Follow Semgrep recommendations
-
-3. [HIGH] rules.python.flask.security.injection.tainted-sql-string
+2. [HIGH] rules.python.flask.security.injection.tainted-sql-string
    Location: test.py:24:13
    Details: Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as SQLAlchemy which will protect your queries.
    CWE: CWE-704: Incorrect Type Conversion or Cast
    Remediation: Follow Semgrep recommendations
 
-4. [HIGH] rules.python.lang.security.audit.dangerous-system-call-audit
-   Location: test.py:33:12
-   Details: Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.
-   CWE: CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')
-   Remediation: Follow Semgrep recommendations
-
-5. [HIGH] rules.python.flask.security.insecure-deserialization
-   Location: test.py:39:11
-   Details: Detected the use of an insecure deserialization library in a Flask route. These libraries are prone to code execution vulnerabilities. Ensure user data does not enter this function. To fix this, try to avoid serializing whole objects. Consider instead using a serializer such as JSON.
-   CWE: CWE-502: Deserialization of Untrusted Data
-   Remediation: Follow Semgrep recommendations
-
-6. [HIGH] rules.python.flask.security.injection.path-traversal-open
-   Location: test.py:52:10
-   Details: Found request data in a call to 'open'. Ensure the request data is validated or sanitized, otherwise it could result in path traversal attacks.
-   CWE: CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')
-   Remediation: Follow Semgrep recommendations
-
-7. [HIGH] rules.java.lang.security.audit.formatted-sql-string
-   Location: SQLi.java:113:13
-   Details: Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.
-   CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
-   Remediation: Follow Semgrep recommendations
-
-8. [HIGH] rules.python.sqlalchemy.security.sqlalchemy-execute-raw-query
+3. [HIGH] rules.python.sqlalchemy.security.sqlalchemy-execute-raw-query
    Location: test.py:25:5
    Details: Avoiding SQL string concatenation: untrusted input concatenated with raw SQL query can result in SQL Injection. In order to execute raw query safely, prepared statement should be used. SQLAlchemy provides TextualSQL to easily used prepared statement with named parameters. For complex SQL composition, use SQL Expression Language or Schema Definition Language. In most cases, SQLAlchemy ORM will be a better option.
    CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
    Remediation: Follow Semgrep recommendations
 
-9. [MEDIUM] rules.python.django.security.injection.sql.sql-injection-db-cursor-execute
-   Location: test.py:21:5
-   Details: User-controlled data from a request is passed to 'execute()'. This could lead to a SQL injection and therefore protected information could be leaked. Instead, use django's QuerySets, which are built with query parameterization and therefore not vulnerable to sql injection. For example, you could use `Entry.objects.filter(date=2006)`.
+4. [HIGH] rules.python.lang.security.dangerous-system-call
+   Location: test.py:33:12
+   Details: Found user-controlled data used in a system call. This could allow a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.
+   CWE: CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')
+   Remediation: Follow Semgrep recommendations
+
+5. [HIGH] rules.python.lang.security.audit.dangerous-system-call-audit
+   Location: test.py:33:12
+   Details: Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.
+   CWE: CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')
+   Remediation: Follow Semgrep recommendations
+
+6. [HIGH] rules.python.flask.security.insecure-deserialization
+   Location: test.py:39:11
+   Details: Detected the use of an insecure deserialization library in a Flask route. These libraries are prone to code execution vulnerabilities. Ensure user data does not enter this function. To fix this, try to avoid serializing whole objects. Consider instead using a serializer such as JSON.
+   CWE: CWE-502: Deserialization of Untrusted Data
+   Remediation: Follow Semgrep recommendations
+
+7. [HIGH] rules.python.flask.security.injection.path-traversal-open
+   Location: test.py:52:10
+   Details: Found request data in a call to 'open'. Ensure the request data is validated or sanitized, otherwise it could result in path traversal attacks.
+   CWE: CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')
+   Remediation: Follow Semgrep recommendations
+
+8. [HIGH] rules.java.lang.security.audit.formatted-sql-string
+   Location: SQLi.java:113:13
+   Details: Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.
    CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
+   Remediation: Follow Semgrep recommendations
+
+9. [MEDIUM] rules.python.flask.security.audit.directly-returned-format-string
+   Location: test.py:46:5
+   Details: Detected Flask route directly returning a formatted string. This is subject to cross-site scripting if user input can reach the string. Consider using the template engine instead and rendering pages with 'render_template()'.
+   CWE: CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
    Remediation: Follow Semgrep recommendations
 
 10. [MEDIUM] rules.java.lang.security.audit.crypto.use-of-md5
@@ -78,53 +78,53 @@ Total Vulnerabilities: 31
    CWE: CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')
    Remediation: Follow Semgrep recommendations
 
-13. [MEDIUM] rules.java.lang.security.audit.xss.no-direct-response-writer
-   Location: SQLi.java:27:13
+13. [MEDIUM] rules.python.django.security.injection.sql.sql-injection-db-cursor-execute
+   Location: test.py:20:5
+   Details: User-controlled data from a request is passed to 'execute()'. This could lead to a SQL injection and therefore protected information could be leaked. Instead, use django's QuerySets, which are built with query parameterization and therefore not vulnerable to sql injection. For example, you could use `Entry.objects.filter(date=2006)`.
+   CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
+   Remediation: Follow Semgrep recommendations
+
+14. [MEDIUM] rules.python.django.security.injection.sql.sql-injection-db-cursor-execute
+   Location: test.py:21:5
+   Details: User-controlled data from a request is passed to 'execute()'. This could lead to a SQL injection and therefore protected information could be leaked. Instead, use django's QuerySets, which are built with query parameterization and therefore not vulnerable to sql injection. For example, you could use `Entry.objects.filter(date=2006)`.
+   CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
+   Remediation: Follow Semgrep recommendations
+
+15. [MEDIUM] rules.java.lang.security.audit.xss.no-direct-response-writer
+   Location: SQLi.java:96:17
    Details: Detected a request with potential user-input going into a OutputStream or Writer object. This bypasses any view or template environments, including HTML escaping, which may expose this application to cross-site scripting (XSS) vulnerabilities. Consider using a view technology such as JavaServer Faces (JSFs) which automatically escapes HTML views.
    CWE: CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
    Remediation: Follow Semgrep recommendations
 
-14. [MEDIUM] rules.python.flask.security.audit.debug-enabled
+16. [MEDIUM] rules.java.lang.security.audit.xss.no-direct-response-writer
+   Location: SQLi.java:49:9
+   Details: Detected a request with potential user-input going into a OutputStream or Writer object. This bypasses any view or template environments, including HTML escaping, which may expose this application to cross-site scripting (XSS) vulnerabilities. Consider using a view technology such as JavaServer Faces (JSFs) which automatically escapes HTML views.
+   CWE: CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
+   Remediation: Follow Semgrep recommendations
+
+17. [MEDIUM] rules.python.flask.security.audit.debug-enabled
    Location: test.py:56:5
    Details: Detected Flask app with debug=True. Do not deploy to production with this flag enabled as it will leak sensitive information. Instead, consider using Flask configuration variables or setting 'debug' using system environment variables.
    CWE: CWE-489: Active Debug Code
    OWASP: A06:2017 - Security Misconfiguration
    Remediation: Follow Semgrep recommendations
 
-15. [MEDIUM] rules.python.flask.security.audit.directly-returned-format-string
-   Location: test.py:46:5
-   Details: Detected Flask route directly returning a formatted string. This is subject to cross-site scripting if user input can reach the string. Consider using the template engine instead and rendering pages with 'render_template()'.
-   CWE: CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
-   Remediation: Follow Semgrep recommendations
-
-16. [MEDIUM] rules.java.lang.security.audit.unsafe-reflection
-   Location: SQLi.java:73:30
-   Details: If an attacker can supply values that the application then uses to determine which class to instantiate or which method to invoke, the potential exists for the attacker to create control flow paths through the application that were not intended by the application developers. This attack vector may allow the attacker to bypass authentication or access control checks or otherwise cause the application to behave in an unexpected manner.
-   CWE: CWE-470: Use of Externally-Controlled Input to Select Classes or Code ('Unsafe Reflection')
-   Remediation: Follow Semgrep recommendations
-
-17. [MEDIUM] rules.python.flask.security.injection.raw-html-format
+18. [MEDIUM] rules.python.flask.security.injection.raw-html-format
    Location: test.py:46:12
    Details: Detected user input flowing into a manually constructed HTML string. You may be accidentally bypassing secure methods of rendering HTML by manually constructing HTML and this could create a cross-site scripting vulnerability, which could let attackers steal sensitive user data. To be sure this is safe, check that the HTML is rendered safely. Otherwise, use templates (`flask.render_template`) which will safely render HTML instead.
    CWE: CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
    Remediation: Follow Semgrep recommendations
 
-18. [MEDIUM] rules.java.lang.security.audit.sqli.jdbc-sqli
-   Location: SQLi.java:113:13
-   Details: Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.
-   CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
-   Remediation: Follow Semgrep recommendations
-
-19. [MEDIUM] rules.python.django.security.injection.sql.sql-injection-db-cursor-execute
-   Location: test.py:20:5
-   Details: User-controlled data from a request is passed to 'execute()'. This could lead to a SQL injection and therefore protected information could be leaked. Instead, use django's QuerySets, which are built with query parameterization and therefore not vulnerable to sql injection. For example, you could use `Entry.objects.filter(date=2006)`.
-   CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
-   Remediation: Follow Semgrep recommendations
-
-20. [MEDIUM] rules.java.lang.security.audit.xss.no-direct-response-writer
-   Location: SQLi.java:96:17
+19. [MEDIUM] rules.java.lang.security.audit.xss.no-direct-response-writer
+   Location: SQLi.java:27:13
    Details: Detected a request with potential user-input going into a OutputStream or Writer object. This bypasses any view or template environments, including HTML escaping, which may expose this application to cross-site scripting (XSS) vulnerabilities. Consider using a view technology such as JavaServer Faces (JSFs) which automatically escapes HTML views.
    CWE: CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
+   Remediation: Follow Semgrep recommendations
+
+20. [MEDIUM] rules.java.lang.security.audit.unsafe-reflection
+   Location: SQLi.java:73:30
+   Details: If an attacker can supply values that the application then uses to determine which class to instantiate or which method to invoke, the potential exists for the attacker to create control flow paths through the application that were not intended by the application developers. This attack vector may allow the attacker to bypass authentication or access control checks or otherwise cause the application to behave in an unexpected manner.
+   CWE: CWE-470: Use of Externally-Controlled Input to Select Classes or Code ('Unsafe Reflection')
    Remediation: Follow Semgrep recommendations
 
 21. [MEDIUM] rules.python.lang.best-practice.unspecified-open-encoding
@@ -133,7 +133,7 @@ Total Vulnerabilities: 31
    Remediation: Follow Semgrep recommendations
 
 22. [MEDIUM] rules.java.lang.security.audit.sqli.jdbc-sqli
-   Location: SQLi.java:38:13
+   Location: SQLi.java:113:13
    Details: Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.
    CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
    Remediation: Follow Semgrep recommendations
@@ -144,34 +144,34 @@ Total Vulnerabilities: 31
    CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
    Remediation: Follow Semgrep recommendations
 
-24. [MEDIUM] rules.java.lang.security.audit.sqli.tainted-sql-from-http-request
+24. [MEDIUM] rules.java.lang.security.audit.sqli.jdbc-sqli
+   Location: SQLi.java:38:13
+   Details: Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.
+   CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
+   Remediation: Follow Semgrep recommendations
+
+25. [MEDIUM] rules.python.lang.security.insecure-hash-algorithm-md5
+   Location: test.py:15:12
+   Details: Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.
+   CWE: CWE-327: Use of a Broken or Risky Cryptographic Algorithm
+   Remediation: Follow Semgrep recommendations
+
+26. [MEDIUM] rules.java.lang.security.audit.sqli.tainted-sql-from-http-request
    Location: SQLi.java:38:13
    Details: Detected input from a HTTPServletRequest going into a SQL sink or statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use parameterized SQL queries or properly sanitize user input instead.
    CWE: CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
    Remediation: Follow Semgrep recommendations
 
-25. [MEDIUM] rules.java.lang.security.audit.object-deserialization
+27. [MEDIUM] rules.java.lang.security.audit.object-deserialization
    Location: SQLi.java:57:9
    Details: Found object deserialization using ObjectInputStream. Deserializing entire Java objects is dangerous because malicious actors can create Java object streams with unintended consequences. Ensure that the objects being deserialized are not user-controlled. If this must be done, consider using HMACs to sign the data stream to make sure it is not tampered with, or consider only transmitting object fields and populating a new object.
    CWE: CWE-502: Deserialization of Untrusted Data
    Remediation: Follow Semgrep recommendations
 
-26. [MEDIUM] rules.python.lang.security.deserialization.avoid-pickle
+28. [MEDIUM] rules.python.lang.security.deserialization.avoid-pickle
    Location: test.py:39:11
    Details: Avoid using `pickle`, which is known to lead to code execution vulnerabilities. When unpickling, the serialized data could be manipulated to run arbitrary code. Instead, consider serializing the relevant data as JSON or a similar text-based serialization format.
    CWE: CWE-502: Deserialization of Untrusted Data
-   Remediation: Follow Semgrep recommendations
-
-27. [MEDIUM] rules.python.lang.security.deserialization.avoid-pickle
-   Location: test.py:39:11
-   Details: Avoid using `pickle`, which is known to lead to code execution vulnerabilities. When unpickling, the serialized data could be manipulated to run arbitrary code. Instead, consider serializing the relevant data as JSON or a similar text-based serialization format.
-   CWE: CWE-502: Deserialization of Untrusted Data
-   Remediation: Follow Semgrep recommendations
-
-28. [MEDIUM] rules.python.lang.security.insecure-hash-algorithm-md5
-   Location: test.py:15:12
-   Details: Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.
-   CWE: CWE-327: Use of a Broken or Risky Cryptographic Algorithm
    Remediation: Follow Semgrep recommendations
 
 29. [MEDIUM] rules.python.lang.security.deserialization.avoid-pickle
@@ -186,9 +186,9 @@ Total Vulnerabilities: 31
    CWE: CWE-502: Deserialization of Untrusted Data
    Remediation: Follow Semgrep recommendations
 
-31. [MEDIUM] rules.java.lang.security.audit.xss.no-direct-response-writer
-   Location: SQLi.java:49:9
-   Details: Detected a request with potential user-input going into a OutputStream or Writer object. This bypasses any view or template environments, including HTML escaping, which may expose this application to cross-site scripting (XSS) vulnerabilities. Consider using a view technology such as JavaServer Faces (JSFs) which automatically escapes HTML views.
-   CWE: CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
+31. [MEDIUM] rules.python.lang.security.deserialization.avoid-pickle
+   Location: test.py:39:11
+   Details: Avoid using `pickle`, which is known to lead to code execution vulnerabilities. When unpickling, the serialized data could be manipulated to run arbitrary code. Instead, consider serializing the relevant data as JSON or a similar text-based serialization format.
+   CWE: CWE-502: Deserialization of Untrusted Data
    Remediation: Follow Semgrep recommendations
 
