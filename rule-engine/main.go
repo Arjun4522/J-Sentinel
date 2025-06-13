@@ -1369,7 +1369,7 @@ func (vd *VulnerabilityDetector) generateReport() map[string]interface{} {
 	}
 
 	report := map[string]interface{}{
-		"scan_id":          uuid.New().String(),
+		"scan_id": getStringConfig(vd.config, "scan_id", uuid.New().String()),
 		"timestamp":        time.Now().Format(time.RFC3339),
 		"source_directory": vd.sourceDir,
 		"statistics": map[string]interface{}{
@@ -1535,6 +1535,7 @@ func main() {
 		useSemgrepRegistry = flag.Bool("semgrep-registry", false, "Use Semgrep registry rules")
 		verbose            = flag.Bool("verbose", true, "Enable verbose logging")
 		configFile         = flag.String("config", "", "Configuration file path")
+		scanId             = flag.String("scan_id", uuid.New().String(), "Unique identifier for the scan") // Added scan_id flag
 	)
 	flag.Parse()
 
@@ -1546,16 +1547,18 @@ func main() {
 	logger.Info("OS/Architecture: %s/%s", runtime.GOOS, runtime.GOARCH)
 	logger.Info("Available CPU cores: %d", runtime.NumCPU())
 	logger.Info("Maximum workers: %d", *maxWorkers)
+	logger.Info("Scan ID: %s", *scanId)
 
 	// Load configuration
 	config := map[string]interface{}{
 		"source_dir":           *sourceDir,
-		"rules_dir":          *rulesDir,
+		"rules_dir":           *rulesDir,
 		"output_path":         *outputPath,
-		"max_workers":          *maxWorkers,
+		"max_workers":         *maxWorkers,
 		"timeout":             *timeout,
 		"use_semgrep_registry": *useSemgrepRegistry,
 		"verbose":             *verbose,
+		"scan_id":             *scanId, // Include scan_id in config
 	}
 
 	// Load config file if provided
@@ -1598,7 +1601,7 @@ func main() {
 	}
 
 	if stats, ok := report["statistics"].(map[string]interface{}); ok {
-		if filesProcessed, ok := stats["files"].(int); ok {
+		if filesProcessed, ok := stats["files_processed"].(int); ok { // Fixed: Corrected key from "files" to "files_processed"
 			logger.Info("Files processed: %d", filesProcessed)
 		}
 		if rulesLoaded, ok := stats["rules_loaded"].(int); ok {
