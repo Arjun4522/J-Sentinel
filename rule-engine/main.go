@@ -330,7 +330,7 @@ func NewVulnerabilityDetector(config map[string]interface{}) *VulnerabilityDetec
 	sourceDir := getStringConfig(config, "source_dir", ".")
 	rulesDir := getStringConfig(config, "rules_dir", "rules")
 	outputPath := getStringConfig(config, "output_path", "vulnerability_report.json")
-	maxWorkers := getIntConfig(config, "max_workers", min(runtime.NumCPU()*2, 16)) // Increased default for better concurrency
+	maxWorkers := getIntConfig(config, "max_workers", runtime.NumCPU()) // Increased default for better concurrency
 	timeout := getIntConfig(config, "timeout", 300)
 	useSemgrepRegistry := getBoolConfig(config, "use_semgrep_registry", false)
 
@@ -1530,7 +1530,7 @@ func main() {
 		sourceDir          = flag.String("source", ".", "Source code directory to scan")
 		rulesDir           = flag.String("rules", "rules", "Rules directory")
 		outputPath         = flag.String("output", "vulnerability_report.json", "Output file path")
-		maxWorkers         = flag.Int("workers", min(runtime.NumCPU()*2, 16), "Maximum number of worker goroutines")
+		maxWorkers         = flag.Int("workers", runtime.NumCPU(), "Maximum number of worker goroutines")
 		timeout            = flag.Int("timeout", 300, "Timeout for individual scans in seconds")
 		useSemgrepRegistry = flag.Bool("semgrep-registry", false, "Use Semgrep registry rules")
 		verbose            = flag.Bool("verbose", true, "Enable verbose logging")
