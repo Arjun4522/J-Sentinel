@@ -136,13 +136,14 @@ The rule engine is the core component of J-Sentinel, providing comprehensive sec
 #### Direct Rule Engine Usage
 ```bash
 # Run with custom rules
-python3 rule-engine/detect_test.py -s test/ -r rule-engine/rules -v --log-file debug.log
+python3 rule-engine/detect.py -s test/ -r rule-engine/rules -v --log-file debug.log
 
 # Run with Semgrep registry
-python3 rule-engine/detect_test.py -s test/ -r rule-engine/rules -v --log-file debug.log --use-semgrep-registry
+python3 rule-engine/detect.py -s test/ -r rule-engine/rules -v --log-file debug.log --use-semgrep-registry
 
 # Compiled binary usage
 cd rule-engine
+./build.sh
 ./detect --source=../test/
 ```
 
@@ -354,7 +355,6 @@ Add new language support by:
 2. Adding language-specific rules
 3. Updating API Gateway configuration
 
-
 ## 🔧 Troubleshooting
 
 ### Rule Engine Issues
@@ -408,5 +408,3 @@ Add new language support by:
    echo $CLASSPATH
    ```
 
-
-- **Issue Tracker**: [GitHub Issues](https://github.com/arjun4522/j-sentinel/issues)
