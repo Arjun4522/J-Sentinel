@@ -1,0 +1,141 @@
+{
+  "metadata": {
+    "rules_used": 1512,
+    "scan_config": {
+      "max_workers": 8,
+      "timeout": 300,
+      "use_semgrep_registry": false
+    },
+    "tool_version": "1.0.0"
+  },
+  "scan_id": "915cc256-43d5-4cc2-b45d-5da31d872e6a",
+  "source_directory": "/home/arjun/Desktop/web-spider",
+  "statistics": {
+    "files_processed": 4,
+    "rules_loaded": 1512,
+    "scan_duration": 546371206296,
+    "scan_end_time": "2025-06-15T01:05:24.111437444+05:30",
+    "scan_start_time": "2025-06-15T00:56:17.740231157+05:30",
+    "vulnerabilities_found": 6
+  },
+  "summary": {
+    "category_breakdown": {
+      "Security": 6
+    },
+    "severity_breakdown": {
+      "MEDIUM": 6
+    },
+    "total_vulnerabilities": 6
+  },
+  "timestamp": "2025-06-15T01:05:24+05:30",
+  "vulnerabilities": [
+    {
+      "rule_id": "rules.python.lang.best-practice.unspecified-open-encoding",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "spiderfinal.py:50:6",
+      "details": "Missing 'encoding' parameter. 'open()' uses device locale encodings by default, corrupting files with special characters. Specify the encoding to ensure cross-platform support when opening files in text mode (e.g. encoding=\"utf-8\").",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "file_path": "/home/arjun/Desktop/web-spider/spiderfinal.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "confidence": "HIGH",
+      "dependency_file": "58a183fe2529cd20cf794aa89be17a3c",
+      "line_number": 50,
+      "column_number": 6,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.requests.best-practice.use-timeout",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "spiderfinal.py:14:20",
+      "details": "Detected a 'requests' call without a timeout set. By default, 'requests' calls wait until the connection is closed. This means a 'requests' call without a timeout will hang the program if a response is never received. Consider setting a timeout for all 'requests'.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "file_path": "/home/arjun/Desktop/web-spider/spiderfinal.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "confidence": "HIGH",
+      "dependency_file": "cb3ea002a423924f1999f2dee2ebaa2b",
+      "line_number": 14,
+      "column_number": 20,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.lang.best-practice.unspecified-open-encoding",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "darkspider.py:78:6",
+      "details": "Missing 'encoding' parameter. 'open()' uses device locale encodings by default, corrupting files with special characters. Specify the encoding to ensure cross-platform support when opening files in text mode (e.g. encoding=\"utf-8\").",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "file_path": "/home/arjun/Desktop/web-spider/darkspider.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "confidence": "HIGH",
+      "dependency_file": "c8a1d14b62c771eb6f0eb1dc840a76a5",
+      "line_number": 78,
+      "column_number": 6,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.lang.best-practice.unspecified-open-encoding",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "darkspider_final.py:81:6",
+      "details": "Missing 'encoding' parameter. 'open()' uses device locale encodings by default, corrupting files with special characters. Specify the encoding to ensure cross-platform support when opening files in text mode (e.g. encoding=\"utf-8\").",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "file_path": "/home/arjun/Desktop/web-spider/darkspider_final.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "confidence": "HIGH",
+      "dependency_file": "22207de30e04c8ac41590e21e7b9841b",
+      "line_number": 81,
+      "column_number": 6,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.lang.best-practice.unspecified-open-encoding",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "spider.py:55:6",
+      "details": "Missing 'encoding' parameter. 'open()' uses device locale encodings by default, corrupting files with special characters. Specify the encoding to ensure cross-platform support when opening files in text mode (e.g. encoding=\"utf-8\").",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "file_path": "/home/arjun/Desktop/web-spider/spider.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "confidence": "HIGH",
+      "dependency_file": "a245cad89fddbbcd2aeebbb7ecae7a36",
+      "line_number": 55,
+      "column_number": 6,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.requests.best-practice.use-timeout",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "spider.py:14:20",
+      "details": "Detected a 'requests' call without a timeout set. By default, 'requests' calls wait until the connection is closed. This means a 'requests' call without a timeout will hang the program if a response is never received. Consider setting a timeout for all 'requests'.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "file_path": "/home/arjun/Desktop/web-spider/spider.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "confidence": "HIGH",
+      "dependency_file": "44070f6bc806ef0ebe83c7232f5a563a",
+      "line_number": 14,
+      "column_number": 20,
+      "code_snippet": "requires login"
+    }
+  ]
+}

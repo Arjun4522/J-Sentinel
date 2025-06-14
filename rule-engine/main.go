@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	//"github.com/mattn/go-sqlite3"
 	"gopkg.in/yaml.v3"
 )
 
@@ -1401,31 +1402,50 @@ func (vd *VulnerabilityDetector) generateReport() map[string]interface{} {
 }
 
 func (vd *VulnerabilityDetector) saveReport(report map[string]interface{}) {
-	outputDir := filepath.Dir(vd.outputPath)
-	if outputDir != "." {
-		err := os.MkdirAll(outputDir, 0755)
-		if err != nil {
-			logger.Error("Failed to create output directory: %v", err)
-			return
-		}
-	}
+    // Save JSON report to file
+    outputDir := filepath.Dir(vd.outputPath)
+    if err := os.MkdirAll(outputDir, 0755); err != nil {
+        logger.Error("Failed to create output directory %s: %v", outputDir, err)
+        return
+    }
+    reportJSON, err := json.MarshalIndent(report, "", "  ")
+    if err != nil {
+        logger.Error("Failed to marshal report to JSON: %v", err)
+        return
+    }
+    if err = os.WriteFile(vd.outputPath, reportJSON, 0644); err != nil {
+        logger.Error("Failed to save JSON report to %s: %v", vd.outputPath, err)
+        return
+    }
+    logger.Info("JSON report saved to %s", vd.outputPath)
 
-	jsonData, err := json.MarshalIndent(report, "", "  ")
-	if err != nil {
-		logger.Error("Failed to marshal report: %v", err)
-		return
-	}
+    // Initialize database connection
+    db, err := NewDB(filepath.Dir(vd.outputPath))
+    if err != nil {
+        logger.Error("Failed to initialize database: %v", err)
+        return
+    }
+    defer db.Close()
 
-	err = os.WriteFile(vd.outputPath, jsonData, 0644)
-	if err != nil {
-		logger.Error("Failed to save report: %v", err)
-		return
-	}
+    // Get scan ID from report or config
+    scanID := getStringConfig(vd.config, "scan_id", uuid.New().String())
 
-	logger.Info("Report saved to %s", vd.outputPath)
+    // Insert scan data with simplified schema
+    _, err = db.conn.Exec(`
+        INSERT INTO scans (
+            scanId, filesProcessed, vulnerabilitiesFound, duration
+        ) VALUES (?, ?, ?, ?)`,
+        scanID,
+        vd.stats.FilesProcessed,
+        vd.stats.VulnerabilitiesFound,
+        int64(vd.stats.ScanDuration),
+    )
+    if err != nil {
+        logger.Error("Failed to insert scan data for scan ID %s: %v", scanID, err)
+        return
+    }
 
-	summaryPath := strings.TrimSuffix(vd.outputPath, filepath.Ext(vd.outputPath)) + "_summary.txt"
-	vd.saveReportSummary(report, summaryPath)
+    logger.Info("Report saved to database with scan ID: %s", scanID)
 }
 
 func (vd *VulnerabilityDetector) saveReportSummary(report map[string]interface{}, summaryPath string) {
