@@ -120,19 +120,6 @@ Ensure you have the following installed:
 
 The rule engine is the core component of J-Sentinel, providing comprehensive security analysis through pattern matching.
 
-#### Direct Rule Engine Usage
-```bash
-# Run with custom rules
-python3 rule-engine/detect_test.py -s test/ -r rule-engine/rules -v --log-file debug.log
-
-# Run with Semgrep registry
-python3 rule-engine/detect_test.py -s test/ -r rule-engine/rules -v --log-file debug.log --use-semgrep-registry
-
-# Binary usage
-cd rule-engine
-./detect --source=../test/
-```
-
 #### API-Driven Analysis (Recommended)
 ```bash
 # Trigger comprehensive security scan
@@ -153,6 +140,19 @@ curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552
 
 # Get detailed report
 curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/report
+```
+
+#### Direct Rule Engine Usage
+```bash
+# Run with custom rules
+python3 rule-engine/detect_test.py -s test/ -r rule-engine/rules -v --log-file debug.log
+
+# Run with Semgrep registry
+python3 rule-engine/detect_test.py -s test/ -r rule-engine/rules -v --log-file debug.log --use-semgrep-registry
+
+# Binary usage
+cd rule-engine
+./detect --source=../test/
 ```
 
 ## 🎯 Rule Engine
