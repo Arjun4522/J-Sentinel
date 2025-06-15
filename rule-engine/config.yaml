@@ -1,0 +1,31 @@
+# Vulnerability Scanner Configuration
+source_dir: "."
+rules_dir: "rules"
+output_path: "vulnerability_report.json"
+max_workers: 8
+timeout: 300
+use_semgrep_registry: false
+verbose: false
+
+# Additional settings
+exclude_dirs:
+  - node_modules
+  - .git
+  - __pycache__
+  - venv
+  - build
+  - dist
+  - target
+
+# Language-specific settings
+languages:
+  python:
+    extensions: [".py", ".py3", ".pyw"]
+  java:
+    extensions: [".java"]
+  javascript:
+    extensions: [".js", ".jsx", ".ts", ".tsx", ".mjs"]
+  cpp:
+    extensions: [".cpp", ".cc", ".cxx", ".c++", ".hpp", ".h", ".c"]
+  csharp:
+    extensions: [".cs"]

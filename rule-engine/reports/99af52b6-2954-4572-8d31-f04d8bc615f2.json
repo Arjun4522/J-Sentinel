@@ -1,0 +1,594 @@
+{
+  "metadata": {
+    "rules_used": 522,
+    "scan_config": {
+      "max_workers": 8,
+      "timeout": 300,
+      "use_semgrep_registry": false
+    },
+    "tool_version": "1.0.0"
+  },
+  "scan_id": "99af52b6-2954-4572-8d31-f04d8bc615f2",
+  "source_directory": "/home/arjun/Desktop/J-Sentinel/test",
+  "statistics": {
+    "files_processed": 28,
+    "rules_loaded": 522,
+    "scan_duration": 12897617514,
+    "scan_end_time": "2025-06-16T00:36:37.196178372+05:30",
+    "scan_start_time": "2025-06-16T00:36:24.298560862+05:30",
+    "vulnerabilities_found": 28
+  },
+  "summary": {
+    "category_breakdown": {
+      "Security": 28
+    },
+    "severity_breakdown": {
+      "HIGH": 8,
+      "MEDIUM": 20
+    },
+    "total_vulnerabilities": 28
+  },
+  "timestamp": "2025-06-16T00:36:37+05:30",
+  "vulnerabilities": [
+    {
+      "rule_id": "rules.java.lang.security.audit.formatted-sql-string",
+      "category": "Security",
+      "severity": "HIGH",
+      "location": "SQLi.java:113:13",
+      "details": "Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "MEDIUM",
+      "dependency_file": "887ce57f097e892a832404ba93fd1332",
+      "line_number": 113,
+      "column_number": 13,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.flask.security.injection.path-traversal-open",
+      "category": "Security",
+      "severity": "HIGH",
+      "location": "test.py:52:10",
+      "details": "Found request data in a call to 'open'. Ensure the request data is validated or sanitized, otherwise it could result in path traversal attacks.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
+      "confidence": "MEDIUM",
+      "dependency_file": "0feb0ca842638aa43995112396363c7f",
+      "line_number": 52,
+      "column_number": 10,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.flask.security.insecure-deserialization",
+      "category": "Security",
+      "severity": "HIGH",
+      "location": "test.py:39:11",
+      "details": "Detected the use of an insecure deserialization library in a Flask route. These libraries are prone to code execution vulnerabilities. Ensure user data does not enter this function. To fix this, try to avoid serializing whole objects. Consider instead using a serializer such as JSON.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-502: Deserialization of Untrusted Data",
+      "confidence": "LOW",
+      "dependency_file": "bac3cb3c0e15574d8a209a3f433101e4",
+      "line_number": 39,
+      "column_number": 11,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.lang.security.dangerous-system-call",
+      "category": "Security",
+      "severity": "HIGH",
+      "location": "test.py:33:12",
+      "details": "Found user-controlled data used in a system call. This could allow a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')",
+      "confidence": "MEDIUM",
+      "dependency_file": "27bbcba3add1a0e79911b5beb1e2664f",
+      "line_number": 33,
+      "column_number": 12,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.lang.security.audit.dangerous-system-call-audit",
+      "category": "Security",
+      "severity": "HIGH",
+      "location": "test.py:33:12",
+      "details": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')",
+      "confidence": "LOW",
+      "dependency_file": "53fe79a9f69b8329a82c438acfb65a9b",
+      "line_number": 33,
+      "column_number": 12,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.sqlalchemy.security.sqlalchemy-execute-raw-query",
+      "category": "Security",
+      "severity": "HIGH",
+      "location": "test.py:25:5",
+      "details": "Avoiding SQL string concatenation: untrusted input concatenated with raw SQL query can result in SQL Injection. In order to execute raw query safely, prepared statement should be used. SQLAlchemy provides TextualSQL to easily used prepared statement with named parameters. For complex SQL composition, use SQL Expression Language or Schema Definition Language. In most cases, SQLAlchemy ORM will be a better option.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "LOW",
+      "dependency_file": "6efe162742c81d58f9d6c98bb9370f55",
+      "line_number": 25,
+      "column_number": 5,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.flask.security.injection.tainted-sql-string",
+      "category": "Security",
+      "severity": "HIGH",
+      "location": "test.py:24:13",
+      "details": "Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as SQLAlchemy which will protect your queries.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-704: Incorrect Type Conversion or Cast",
+      "confidence": "MEDIUM",
+      "dependency_file": "ccb5fe947524093aadf60dabc93b5a36",
+      "line_number": 24,
+      "column_number": 13,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.django.security.injection.tainted-sql-string",
+      "category": "Security",
+      "severity": "HIGH",
+      "location": "test.py:24:13",
+      "details": "Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using the Django object-relational mappers (ORM) instead of raw SQL queries.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-915: Improperly Controlled Modification of Dynamically-Determined Object Attributes",
+      "confidence": "LOW",
+      "dependency_file": "729fc5fd16718ccb80c1d3a137d5e147",
+      "line_number": 24,
+      "column_number": 13,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.crypto.use-of-md5",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "SQLi.java:25:58",
+      "details": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use HMAC instead.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-328: Use of Weak Hash",
+      "confidence": "HIGH",
+      "dependency_file": "e6d6a16b0052af5841b932b8738b864b",
+      "line_number": 25,
+      "column_number": 58,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.sqli.jdbc-sqli",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "SQLi.java:113:13",
+      "details": "Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "LOW",
+      "dependency_file": "2be262f6dec16813f4579ed63c70212f",
+      "line_number": 113,
+      "column_number": 13,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.lang.security.insecure-hash-algorithm-md5",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:15:12",
+      "details": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-327: Use of a Broken or Risky Cryptographic Algorithm",
+      "confidence": "MEDIUM",
+      "dependency_file": "824fbc5434146331abe620fe8fcc8370",
+      "line_number": 15,
+      "column_number": 12,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.django.security.injection.sql.sql-injection-db-cursor-execute",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:20:5",
+      "details": "User-controlled data from a request is passed to 'execute()'. This could lead to a SQL injection and therefore protected information could be leaked. Instead, use django's QuerySets, which are built with query parameterization and therefore not vulnerable to sql injection. For example, you could use `Entry.objects.filter(date=2006)`.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "MEDIUM",
+      "dependency_file": "a6a928ef59540c346a404c7e276e6cd3",
+      "line_number": 20,
+      "column_number": 5,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.django.security.injection.sql.sql-injection-db-cursor-execute",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:21:5",
+      "details": "User-controlled data from a request is passed to 'execute()'. This could lead to a SQL injection and therefore protected information could be leaked. Instead, use django's QuerySets, which are built with query parameterization and therefore not vulnerable to sql injection. For example, you could use `Entry.objects.filter(date=2006)`.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "MEDIUM",
+      "dependency_file": "b9b00f6cef4d79a9a9f8232ca5330c2f",
+      "line_number": 21,
+      "column_number": 5,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.xss.no-direct-response-writer",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "SQLi.java:96:17",
+      "details": "Detected a request with potential user-input going into a OutputStream or Writer object. This bypasses any view or template environments, including HTML escaping, which may expose this application to cross-site scripting (XSS) vulnerabilities. Consider using a view technology such as JavaServer Faces (JSFs) which automatically escapes HTML views.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+      "confidence": "MEDIUM",
+      "dependency_file": "28341ddd0a6bdffd68d958a28f33479c",
+      "line_number": 96,
+      "column_number": 17,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.unsafe-reflection",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "SQLi.java:73:30",
+      "details": "If an attacker can supply values that the application then uses to determine which class to instantiate or which method to invoke, the potential exists for the attacker to create control flow paths through the application that were not intended by the application developers. This attack vector may allow the attacker to bypass authentication or access control checks or otherwise cause the application to behave in an unexpected manner.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-470: Use of Externally-Controlled Input to Select Classes or Code ('Unsafe Reflection')",
+      "confidence": "LOW",
+      "dependency_file": "d548d72619b33fab2565f3495ff293d5",
+      "line_number": 73,
+      "column_number": 30,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.lang.security.audit.formatted-sql-query",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:25:5",
+      "details": "Detected possible formatted SQL query. Use parameterized queries instead.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "LOW",
+      "dependency_file": "d80e8f6599868f451fbddd195f7853f7",
+      "line_number": 25,
+      "column_number": 5,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.object-deserialization",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "SQLi.java:57:9",
+      "details": "Found object deserialization using ObjectInputStream. Deserializing entire Java objects is dangerous because malicious actors can create Java object streams with unintended consequences. Ensure that the objects being deserialized are not user-controlled. If this must be done, consider using HMACs to sign the data stream to make sure it is not tampered with, or consider only transmitting object fields and populating a new object.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-502: Deserialization of Untrusted Data",
+      "confidence": "LOW",
+      "dependency_file": "c0f3666f7f1de2336d4167748895739d",
+      "line_number": 57,
+      "column_number": 9,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.xss.no-direct-response-writer",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "SQLi.java:49:9",
+      "details": "Detected a request with potential user-input going into a OutputStream or Writer object. This bypasses any view or template environments, including HTML escaping, which may expose this application to cross-site scripting (XSS) vulnerabilities. Consider using a view technology such as JavaServer Faces (JSFs) which automatically escapes HTML views.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+      "confidence": "MEDIUM",
+      "dependency_file": "c0ed7057b7999af92cb24c8d48fcef2d",
+      "line_number": 49,
+      "column_number": 9,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.sqli.tainted-sql-from-http-request",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "SQLi.java:38:13",
+      "details": "Detected input from a HTTPServletRequest going into a SQL sink or statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use parameterized SQL queries or properly sanitize user input instead.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "HIGH",
+      "dependency_file": "d64db1cb93aa32b5350e3d0180118ff9",
+      "line_number": 38,
+      "column_number": 13,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.sqli.jdbc-sqli",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "SQLi.java:38:13",
+      "details": "Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "LOW",
+      "dependency_file": "2b71bf3c4cd0198ab68baaa07b620f7e",
+      "line_number": 38,
+      "column_number": 13,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.lang.security.deserialization.avoid-pickle",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:39:11",
+      "details": "Avoid using `pickle`, which is known to lead to code execution vulnerabilities. When unpickling, the serialized data could be manipulated to run arbitrary code. Instead, consider serializing the relevant data as JSON or a similar text-based serialization format.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-502: Deserialization of Untrusted Data",
+      "confidence": "LOW",
+      "dependency_file": "3a96fcd11f0c2aa1bf3705f5a8e4aab4",
+      "line_number": 39,
+      "column_number": 11,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.flask.security.audit.directly-returned-format-string",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:46:5",
+      "details": "Detected Flask route directly returning a formatted string. This is subject to cross-site scripting if user input can reach the string. Consider using the template engine instead and rendering pages with 'render_template()'.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+      "confidence": "MEDIUM",
+      "dependency_file": "680fa54d57cfb1b8ac1980a4a8ba55af",
+      "line_number": 46,
+      "column_number": 5,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.django.security.injection.raw-html-format",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:46:12",
+      "details": "Detected user input flowing into a manually constructed HTML string. You may be accidentally bypassing secure methods of rendering HTML by manually constructing HTML and this could create a cross-site scripting vulnerability, which could let attackers steal sensitive user data. To be sure this is safe, check that the HTML is rendered safely. Otherwise, use templates (`django.shortcuts.render`) which will safely render HTML instead.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+      "confidence": "MEDIUM",
+      "dependency_file": "75660e44eb0864041f269a4dff58f824",
+      "line_number": 46,
+      "column_number": 12,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.flask.security.injection.raw-html-format",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:46:12",
+      "details": "Detected user input flowing into a manually constructed HTML string. You may be accidentally bypassing secure methods of rendering HTML by manually constructing HTML and this could create a cross-site scripting vulnerability, which could let attackers steal sensitive user data. To be sure this is safe, check that the HTML is rendered safely. Otherwise, use templates (`flask.render_template`) which will safely render HTML instead.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+      "confidence": "MEDIUM",
+      "dependency_file": "196db9dff209bdd39bacd932c8233c41",
+      "line_number": 46,
+      "column_number": 12,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.django.security.injection.path-traversal.path-traversal-open",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:51:5",
+      "details": "Found request data in a call to 'open'. Ensure the request data is validated or sanitized, otherwise it could result in path traversal attacks and therefore sensitive data being leaked. To mitigate, consider using os.path.abspath or os.path.realpath or the pathlib library.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
+      "confidence": "MEDIUM",
+      "dependency_file": "79605fae6af9aa8949bc77b42818d444",
+      "line_number": 51,
+      "column_number": 5,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.xss.no-direct-response-writer",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "SQLi.java:27:13",
+      "details": "Detected a request with potential user-input going into a OutputStream or Writer object. This bypasses any view or template environments, including HTML escaping, which may expose this application to cross-site scripting (XSS) vulnerabilities. Consider using a view technology such as JavaServer Faces (JSFs) which automatically escapes HTML views.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/SQLi.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+      "confidence": "MEDIUM",
+      "dependency_file": "b49ec0ac2421b8a9be27fd4a4779428f",
+      "line_number": 27,
+      "column_number": 13,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.lang.best-practice.unspecified-open-encoding",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:52:10",
+      "details": "Missing 'encoding' parameter. 'open()' uses device locale encodings by default, corrupting files with special characters. Specify the encoding to ensure cross-platform support when opening files in text mode (e.g. encoding=\"utf-8\").",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "confidence": "HIGH",
+      "dependency_file": "4333502001d40f08a52bef45ada02972",
+      "line_number": 52,
+      "column_number": 10,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.python.flask.security.audit.debug-enabled",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "test.py:56:5",
+      "details": "Detected Flask app with debug=True. Do not deploy to production with this flag enabled as it will leak sensitive information. Instead, consider using Flask configuration variables or setting 'debug' using system environment variables.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arjun/Desktop/J-Sentinel/test/test.py",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-489: Active Debug Code",
+      "review_guidance": "A06:2017 - Security Misconfiguration",
+      "confidence": "HIGH",
+      "dependency_file": "05228835d66f2f99f227524ecfdc2bb0",
+      "line_number": 56,
+      "column_number": 5,
+      "code_snippet": "requires login"
+    }
+  ]
+}

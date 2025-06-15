@@ -65,19 +65,41 @@ init_go_module() {
 install_dependencies() {
     print_status "Installing Go dependencies..."
     
-    # Add required dependencies
-    go get github.com/google/uuid@latest
-    go get gopkg.in/yaml.v3@latest
+    go get github.com/google/uuid@v1.6.0
+    go get gopkg.in/yaml.v3@v3.0.1
+    go get github.com/mattn/go-sqlite3@v1.14.28
     
-    print_success "Dependencies installed"
+    if [ $? -eq 0 ]; then
+        print_success "Dependencies installed"
+    else
+        print_error "Failed to install dependencies"
+        exit 1
+    fi
     
-    # Tidy up the module
     print_status "Tidying up Go module..."
     go mod tidy
-    print_success "Module tidied"
+    if [ $? -eq 0 ]; then
+        print_success "Module tidied"
+    else
+        print_error "Failed to tidy module"
+        exit 1
+    fi
+}
+# Build the database initializer
+build_initdb() {
+    print_status "Building database initializer..."
+    
+    go build -o initdb initdb.go
+    
+    if [ $? -eq 0 ]; then
+        print_success "Database initializer built: ./initdb"
+    else
+        print_error "Failed to build initdb"
+        exit 1
+    fi
 }
 
-# Build the application
+# Build the main application
 build_application() {
     print_status "Building vulnerability scanner..."
     
@@ -91,7 +113,7 @@ build_application() {
     
     # Build for current platform
     print_status "Building for current platform ($(go env GOOS)/$(go env GOARCH))..."
-    go build -ldflags "$LDFLAGS" -o detect main.go
+    go build -ldflags "$LDFLAGS" -o detect main.go db_setup.go
     
     if [ $? -eq 0 ]; then
         print_success "Build completed successfully"
@@ -135,7 +157,7 @@ build_cross_platform() {
         
         print_status "Building for $GOOS/$GOARCH..."
         
-        env GOOS="$GOOS" GOARCH="$GOARCH" go build -ldflags "$LDFLAGS" -o "build/$output_name" main.go
+        env GOOS="$GOOS" GOARCH="$GOARCH" go build -ldflags "$LDFLAGS" -o "build/$output_name" main.go db_setup.go
         
         if [ $? -eq 0 ]; then
             print_success "Built build/$output_name"
@@ -295,12 +317,13 @@ EOF
 run_tests() {
     print_status "Running tests..."
     
-    if [ -f "*_test.go" ]; then
+    if ls *_test.go >/dev/null 2>&1; then
         go test -v ./...
         if [ $? -eq 0 ]; then
             print_success "All tests passed"
         else
             print_error "Some tests failed"
+            exit 1
         fi
     else
         print_warning "No test files found"
@@ -344,6 +367,7 @@ clean_build() {
     print_status "Cleaning build artifacts..."
     
     rm -f detect
+    rm -f initdb
     rm -rf build/
     rm -f go.sum
     
@@ -408,6 +432,7 @@ main() {
     if [ "$setup_flag" = true ]; then
         create_default_config
         create_sample_rules
+        build_initdb
     fi
     
     # Run tests if requested
@@ -426,9 +451,10 @@ main() {
     echo ""
     echo "Next steps:"
     echo "1. Run the scanner: ./detect --help"
-    echo "2. Configure settings in config.yaml (if created)"
-    echo "3. Add custom rules in the rules/ directory"
-    echo "4. Consider installing Semgrep for enhanced scanning"
+    echo "2. Initialize the database (if needed): ./initdb"
+    echo "3. Configure settings in config.yaml (if created)"
+    echo "4. Add custom rules in the rules/ directory"
+    echo "5. Consider installing Semgrep for enhanced scanning"
 }
 
 # Run main function with all arguments

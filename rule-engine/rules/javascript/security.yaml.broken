@@ -1,0 +1,24 @@
+rules:
+  - id: js-xss
+    category: Security
+    type: regex
+    pattern: '(innerHTML|outerHTML|document\.write)\s*=.*\+'
+    severity: MEDIUM
+    message: Potential XSS vulnerability
+    fix: Sanitize user input before DOM insertion
+    cwe: CWE-79
+    owasp: A03:2021
+    confidence: MEDIUM
+    tags: [xss, security]
+    
+  - id: js-eval-usage
+    category: Security
+    type: regex
+    pattern: '\beval\s*\('
+    severity: HIGH
+    message: Use of eval() function detected
+    fix: Avoid eval() and use safer alternatives
+    cwe: CWE-95
+    owasp: A03:2021
+    confidence: HIGH
+    tags: [code-injection, security]
