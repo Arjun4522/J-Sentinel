@@ -19,7 +19,7 @@
 
 ## 🎯 Overview
 
-J-Sentinel is a powerful multi-language static analysis platform designed to enhance application security through advanced rule-based pattern matching and vulnerability detection. The tool combines custom rule engines with optional Semgrep integration to provide comprehensive security insights for Java, C/C++, Java, and other programming languages.
+J-Sentinel is a powerful multi-language static analysis platform designed to enhance application security through advanced rule-based pattern matching and vulnerability detection. The tool combines custom rule engines with optional Semgrep integration to provide comprehensive security insights for Java, C/C++, Python, and other programming languages.
 
 ## 🏗️ Architecture
 
