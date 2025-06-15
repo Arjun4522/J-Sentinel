@@ -8,6 +8,7 @@
 - [Architecture](#️-architecture)
 - [Features](#-features)
 - [Installation](#-installation)
+- [Docker Deployment](#-docker-deployment)
 - [Usage](#-usage)
 - [Rule Engine](#-rule-engine)
 - [API Reference](#-api-reference)
@@ -113,6 +114,31 @@ Ensure you have the following installed:
    ./mvnw clean install
    ./mvnw spring-boot:run
    ```
+
+## 🐳 Docker Deployment
+
+Docker provides the easiest way to deploy J-Sentinel with all dependencies pre-configured.
+
+### Quick Start with Docker
+
+```bash
+# Build the image
+docker build -t j-sentinel .
+
+# Run the container
+docker run -d \
+  --name j-sentinel \
+  -p 8080:8080 \
+  -e API_USER=user \
+  -e API_PASSWORD=secret \
+  -e SPRING_PROFILES_ACTIVE=docker \
+  -e JAVA_OPTS="-Xmx1g -Xms512m" \
+  -v $(pwd)/data/db:/app/reports \
+  -v $(pwd)/data/uploads:/tmp/j-sentinel/uploads \
+  -v $(pwd)/data/outputs:/tmp/j-sentinel/outputs \
+  --restart unless-stopped \
+  j-sentinel
+```
 
 ## 🚀 Usage
 
@@ -416,3 +442,4 @@ We welcome contributions to J-Sentinel! Please follow these guidelines:
 For detailed contributing guidelines, please see our [CONTRIBUTING.md](CONTRIBUTING.md) file.
 
 ---
+

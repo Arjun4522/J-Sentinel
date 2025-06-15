@@ -33,3 +33,7 @@ api-gateway/target/
 *.swp
 *.zip
 *.7z
+
+# Old bash scripts and scanId
+jsentinel.sh
+.jsentinel_scanid
