@@ -622,7 +622,10 @@ func (vd *VulnerabilityDetector) ScanCodebase() (map[string]interface{}, error) 
         return nil, fmt.Errorf("failed to discover source files: %w", err)
     }
 
+    // Set the actual files count here
+    vd.stats.FilesProcessed = len(sourceFiles)
     vd.progress.totalFiles = len(sourceFiles)
+    
     vd.progress.UpdateStage(StageLoadingRules)
     logger.Debug("Found %d source files", len(sourceFiles))
     if len(sourceFiles) == 0 {
@@ -710,7 +713,7 @@ func (vd *VulnerabilityDetector) ScanCodebase() (map[string]interface{}, error) 
         for vulns := range resultChan {
             vd.mu.Lock()
             vd.vulnerabilities = append(vd.vulnerabilities, vulns...)
-            vd.stats.FilesProcessed += len(vulns)
+            vd.stats.VulnerabilitiesFound += len(vulns) // Only increment vulnerabilities count
             vd.mu.Unlock()
         }
         close(resultsDone)
@@ -729,7 +732,6 @@ func (vd *VulnerabilityDetector) ScanCodebase() (map[string]interface{}, error) 
     endTime := time.Now()
     vd.stats.ScanEndTime = &endTime
     vd.stats.ScanDuration = endTime.Sub(startTime)
-    vd.stats.VulnerabilitiesFound = len(vd.vulnerabilities)
 
     report := vd.generateReport()
     vd.saveReport(report)
@@ -1589,7 +1591,6 @@ func (vd *VulnerabilityDetector) generateReport() map[string]interface{} {
         categoryCounts[vuln.Category]++
     }
 
-    // Get scan ID from config
     scanID := getStringConfig(vd.config, "scan_id", uuid.New().String())
 
     report := map[string]interface{}{
@@ -1597,7 +1598,7 @@ func (vd *VulnerabilityDetector) generateReport() map[string]interface{} {
         "timestamp":          time.Now().Format(time.RFC3339),
         "source_directory":   vd.sourceDir,
         "statistics": map[string]interface{}{
-            "files_processed":        vd.stats.FilesProcessed,
+            "files_processed":        vd.stats.FilesProcessed,  // Now shows actual files scanned
             "rules_loaded":          vd.stats.RulesLoaded,
             "vulnerabilities_found":  vd.stats.VulnerabilitiesFound,
             "scan_start_time":        vd.stats.ScanStartTime.Format(time.RFC3339Nano),
@@ -1682,20 +1683,16 @@ func (vd *VulnerabilityDetector) saveReportSummary(report map[string]interface{}
 }
 
 func (vd *VulnerabilityDetector) saveReport(report map[string]interface{}) {
-    // Get scan ID from config
     scanID := getStringConfig(vd.config, "scan_id", uuid.New().String())
     
-    // Create reports directory if it doesn't exist
     reportsDir := "./reports"
     if err := os.MkdirAll(reportsDir, 0755); err != nil {
         logger.Error("Failed to create reports directory %s: %v", reportsDir, err)
         return
     }
 
-    // Generate report paths inside the reports directory
     reportPath := filepath.Join(reportsDir, fmt.Sprintf("%s.json", scanID))
 
-    // Save JSON report
     reportJSON, err := json.MarshalIndent(report, "", "  ")
     if err != nil {
         logger.Error("Failed to marshal report to JSON: %v", err)
@@ -1708,7 +1705,6 @@ func (vd *VulnerabilityDetector) saveReport(report map[string]interface{}) {
     }
     logger.Info("JSON report saved to %s", reportPath)
 
-    // Initialize database connection
     db, err := NewDB(filepath.Dir(vd.outputPath))
     if err != nil {
         logger.Error("Failed to initialize database: %v", err)
@@ -1716,39 +1712,37 @@ func (vd *VulnerabilityDetector) saveReport(report map[string]interface{}) {
     }
     defer db.Close()
 
-    // Insert scan data with all required fields
     _, err = db.conn.Exec(`
         INSERT INTO scans (
             scanId, source_directory, filesProcessed, 
             vulnerabilitiesFound, duration, timestamp
         ) VALUES (?, ?, ?, ?, ?, ?)`,
         scanID,
-        vd.sourceDir, // source_directory
-        vd.stats.FilesProcessed,
+        vd.sourceDir,
+        vd.stats.FilesProcessed,  // Using the correct files count
         vd.stats.VulnerabilitiesFound,
         int64(vd.stats.ScanDuration),
-        time.Now().Format(time.RFC3339), // timestamp
+        time.Now().Format(time.RFC3339),
     )
     if err != nil {
         logger.Error("Failed to insert scan data for scan ID %s: %v", scanID, err)
         return
     }
 
-	// Update directory history
-_, err = db.conn.Exec(`
-    INSERT INTO directory_history (
-        directory, first_scan, last_scan, scan_count
-    ) VALUES (?, ?, ?, 1)
-    ON CONFLICT(directory) DO UPDATE SET
-        last_scan = excluded.last_scan,
-        scan_count = scan_count + 1`, 
-    vd.sourceDir, // directory
-    time.Now().Format(time.RFC3339), // first_scan (for new entries)
-    time.Now().Format(time.RFC3339), // last_scan
-	)
-	if err != nil {
-    	logger.Error("Failed to update directory history: %v", err)
-	}
+    _, err = db.conn.Exec(`
+        INSERT INTO directory_history (
+            directory, first_scan, last_scan, scan_count
+        ) VALUES (?, ?, ?, 1)
+        ON CONFLICT(directory) DO UPDATE SET
+            last_scan = excluded.last_scan,
+            scan_count = scan_count + 1`, 
+        vd.sourceDir,
+        time.Now().Format(time.RFC3339),
+        time.Now().Format(time.RFC3339),
+    )
+    if err != nil {
+        logger.Error("Failed to update directory history: %v", err)
+    }
 
     logger.Info("Report saved to database with scan ID: %s", scanID)
 }

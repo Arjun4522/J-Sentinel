@@ -19,24 +19,20 @@
 
 ## 🎯 Overview
 
-J-Sentinel is a powerful multi-language static analysis platform designed to enhance application security through advanced rule-based pattern matching and vulnerability detection. The tool combines custom rule engines with optional Semgrep integration to provide comprehensive security insights for Java, C/C++, and other programming languages.
+J-Sentinel is a powerful multi-language static analysis platform designed to enhance application security through advanced rule-based pattern matching and vulnerability detection. The tool combines custom rule engines with optional Semgrep integration to provide comprehensive security insights for Java, C/C++, Java, and other programming languages.
 
 ## 🏗️ Architecture
 
-J-Sentinel consists of four main components:
+J-Sentinel consists of three main components:
 
 ### Core Components
 - **🔍 Rule Engine**: Advanced pattern matching system with custom rules and Semgrep integration
-- **📊 Multi-Language Parsers**: Java, C/C++ code analysis with extensible parser architecture
 - **🌐 API Gateway**: Spring Boot service for managing scans, rules, and analysis results
-- **📈 Code Graph Analysis**: Optional detailed code graph construction for advanced analysis
+- **🗄️ Database**: SQLite database for persistent scan history and tracking
 
 ### Analysis Engines
 - **🎯 Rule-Based Detection**: Custom pattern matching with configurable rule sets
 - **🔧 Semgrep Integration**: Industry-standard rule registry support
-- **🌳 Code Graph Generator**: Creates interconnected representations of code elements
-- **🔄 Control Flow Analyzer**: Tracks program execution paths
-- **📈 Data Flow Analyzer**: Analyzes data movement and transformations
 
 ## ✨ Features
 
@@ -54,11 +50,11 @@ J-Sentinel consists of four main components:
 - **Input Validation**: Missing validation and sanitization detection
 - **Sensitive Data Exposure**: Credential and PII leak detection
 
-### 📊 Advanced Analysis (Optional)
-- **Code Graph Generation**: Detailed code structure representation
-- **Taint Analysis**: Data flow vulnerability tracking
-- **Control Flow Analysis**: Program execution path analysis
-- **Data Flow Analysis**: Variable and data transformation tracking
+### 📊 Scan Management
+- **Persistent History**: SQLite database for scan tracking
+- **Real-time Status**: Monitor scan progress and completion
+- **Comprehensive Reports**: Detailed vulnerability analysis with severity levels
+- **Directory Tracking**: Track scans by source directory
 
 ## 📦 Installation
 
@@ -68,8 +64,9 @@ Ensure you have the following installed:
 - ☕ **Java 17+** - Main runtime environment
 - 🔧 **Maven 3.6+** - Build and dependency management
 - 🐍 **Python 3.8+** - Rule engine and Semgrep integration
-- 🛠️ **CMake 3.15+** - C/C++ parser compilation
+- 🗄️ **SQLite** - Database for scan history
 - 📦 **Semgrep** - Optional, for extended rule support
+- 🔧 **Go** - For rule engine binary compilation
 
 ### Setup
 
@@ -81,7 +78,6 @@ Ensure you have the following installed:
 
 2. **Set up environment variables:**
    ```bash
-   export CLASSPATH=".:/home/arjun/Desktop/J-Sentinel:/home/arjun/.m2/repository/com/github/javaparser/javaparser-core/3.26.2/javaparser-core-3.26.2.jar:/home/arjun/.m2/repository/org/json/json/20240303/json-20240303.jar:/home/arjun/.m2/repository/org/jgrapht/jgrapht-core/1.5.2/jgrapht-core-1.5.2.jar:/home/arjun/.m2/repository/org/jheaps/jheaps/0.14/jheaps-0.14.jar:/home/arjun/.m2/repository/org/apfloat/apfloat/1.10.1/apfloat-1.10.1.jar"
    export API_USER=user
    export API_PASSWORD=secret
    ```
@@ -97,33 +93,24 @@ Ensure you have the following installed:
    pip install semgrep pyyaml requests
    ```
 
-5. **Build components:**
+5. **Set up SQLite database:**
    ```bash
-   # Java components
-   mkdir -p lib
-   cp ~/.m2/repository/com/github/javaparser/javaparser-core/3.26.2/javaparser-core-3.26.2.jar lib/
-   cp ~/.m2/repository/org/json/json/20240303/json-20240303.jar lib/
-   cp ~/.m2/repository/org/jgrapht/jgrapht-core/1.5.2/jgrapht-core-1.5.2.jar lib/
-   cp ~/.m2/repository/org/jheaps/jheaps/0.14/jheaps-0.14.jar lib/
-   cp ~/.m2/repository/org/apfloat/apfloat/1.10.1/apfloat-1.10.1.jar lib/
-   
-   javac -cp "lib/*" scanner.java analyse_test.java cfg_extract.java dfg_extract.java
-   
-   # C/C++ parser
-   cd cpp-parser/build
-   cmake ../
-   make
-   cd ../..
-   
-   # Rule engine
+   go run initdb.go db_setup.go
+   # Verify database creation
+   sqlite3 reports/data.db
+   ```
+
+6. **Build rule engine:**
+   ```bash
    cd rule-engine
    ./build.sh
    cd ..
    ```
 
-6. **Start the API Gateway:**
+7. **Build and start the API Gateway:**
    ```bash
    cd api-gateway
+   ./mvnw clean install
    ./mvnw spring-boot:run
    ```
 
@@ -133,52 +120,39 @@ Ensure you have the following installed:
 
 The rule engine is the core component of J-Sentinel, providing comprehensive security analysis through pattern matching.
 
-#### Direct Rule Engine Usage
-```bash
-# Run with custom rules
-python3 rule-engine/detect.py -s test/ -r rule-engine/rules -v --log-file debug.log
-
-# Run with Semgrep registry
-python3 rule-engine/detect.py -s test/ -r rule-engine/rules -v --log-file debug.log --use-semgrep-registry
-
-# Compiled binary usage
-cd rule-engine
-./build.sh
-./detect --source=../test/
-```
-
 #### API-Driven Analysis (Recommended)
 ```bash
 # Trigger comprehensive security scan
 curl -u user:secret -X POST http://localhost:8080/api/scan/trigger \
 -H "Content-Type: application/json" \
 -d '{
-  "sourceDir": "/path/to/your/code",
-  "rulesDir": "/path/to/j-sentinel/rule-engine/rules",
+  "sourceDir": "/home/arjun/Desktop/J-Sentinel/test",
+  "rulesDir": "/home/arjun/Desktop/J-Sentinel/rule-engine/rules",
   "timeout": 300,
   "useSemgrep": false
 }'
 
-# Check scan status
-curl -u user:secret http://localhost:8080/api/scans/status/<scan-id>
+# Get all scans
+curl -u user:secret http://localhost:8080/api/scans
+
+# Get specific scan metadata
+curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/metadata
 
 # Get detailed report
-curl -u user:secret http://localhost:8080/api/scans/<scan-id>/report
+curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/report
 ```
 
-### Multi-Language Analysis
-
-#### Java Analysis
+#### Direct Rule Engine Usage
 ```bash
-# CLI approach
-./jsentinel.sh scan --input test/ --endpoint http://localhost:8080/api --user user --password secret --output output/scan.json
-./jsentinel.sh taint --endpoint http://localhost:8080/api --user user --password secret --output output/taint_analysis.json
-```
+# Run with custom rules
+python3 rule-engine/detect_test.py -s test/ -r rule-engine/rules -v --log-file debug.log
 
-#### C/C++ Analysis
-```bash
-cd cpp-parser/build
-./cpp_scanner ../test_code.cpp --local --output=../../output/codegraph_cpp.json
+# Run with Semgrep registry
+python3 rule-engine/detect_test.py -s test/ -r rule-engine/rules -v --log-file debug.log --use-semgrep-registry
+
+# Binary usage
+cd rule-engine
+./detect --source=../test/
 ```
 
 ## 🎯 Rule Engine
@@ -223,25 +197,21 @@ python3 detect_test.py --use-semgrep-registry
 
 ## 🔌 API Reference
 
-### Rule Engine Endpoints
+### Scan Management Endpoints
 
 | Method | Endpoint | Description | Parameters |
 |--------|----------|-------------|------------|
 | `POST` | `/api/scan/trigger` | Trigger security scan | `sourceDir`, `rulesDir`, `timeout`, `useSemgrep` |
-| `GET` | `/api/scans/status/<id>` | Get scan status | `id` (path) |
-| `GET` | `/api/scans/<id>/report` | Get scan report | `id` (path) |
+| `GET` | `/api/scans` | Get all scans | - |
 | `GET` | `/api/scans/<id>/metadata` | Get scan metadata | `id` (path) |
-| `GET` | `/api/scans` | List all scans | - |
+| `GET` | `/api/scans/<id>/report` | Get scan report | `id` (path) |
 
-### Code Graph Endpoints (Optional)
+### History Endpoints
 
 | Method | Endpoint | Description | Parameters |
 |--------|----------|-------------|------------|
-| `POST` | `/api/scan` | Upload code graph | `file` (multipart) |
-| `GET` | `/api/graph` | Retrieve code graph | `scanId` (query) |
-| `GET` | `/api/cfg_extract` | Get Control Flow Graph | `scanId` (query) |
-| `GET` | `/api/dfg_extract` | Get Data Flow Graph | `scanId` (query) |
-| `GET` | `/api/taint_analyse` | Get taint analysis | `scanId` (query) |
+| `GET` | `/api/history/scans` | Get all scan history | - |
+| `GET` | `/api/history/directory/<path>` | Get directory scan history | `path` (URL encoded) |
 
 ### Authentication
 Uses HTTP Basic Authentication:
@@ -289,27 +259,37 @@ engine:
    curl -u user:secret -X POST http://localhost:8080/api/scan/trigger \
    -H "Content-Type: application/json" \
    -d '{
-     "sourceDir": "/home/user/my-project/src",
-     "rulesDir": "/home/user/j-sentinel/rule-engine/rules",
+     "sourceDir": "/home/arjun/Desktop/J-Sentinel/test",
+     "rulesDir": "/home/arjun/Desktop/J-Sentinel/rule-engine/rules",
      "timeout": 300,
-     "useSemgrep": true
+     "useSemgrep": false
    }'
    ```
 
-3. **Monitor Progress**:
+3. **Track All Scans**:
    ```bash
-   # Response contains scan ID, e.g., "2a96d0e7-c8d2-4efd-8526-a552fb46f421"
-   curl -u user:secret http://localhost:8080/api/scans/status/2a96d0e7-c8d2-4efd-8526-a552fb46f421
+   curl -u user:secret http://localhost:8080/api/scans
    ```
 
-4. **Retrieve Results**:
+4. **Get Specific Scan Details**:
    ```bash
+   # Get metadata
+   curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/metadata
+   
+   # Get full report
    curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/report
    ```
 
-5. **Track All Scans**:
+5. **View Scan History**:
    ```bash
-   curl -u user:secret http://localhost:8080/api/scans
+   # All scan history
+   curl -u user:secret http://localhost:8080/api/history/scans
+   
+   # Directory-specific history (URL encoded path)
+   curl -u user:secret "http://localhost:8080/api/history/directory/%2Fprojects%2Fmyapp"
+   
+   # Pretty-printed with jq
+   curl -s -u user:secret http://localhost:8080/api/history/scans | jq
    ```
 
 ### Sample Output
@@ -340,20 +320,18 @@ engine:
 ## 🌍 Multi-Language Support
 
 ### Java
-- **Parser**: JavaParser-based AST analysis
 - **Features**: Full language support, framework-specific rules
 - **Rules**: Spring Security, JPA, Servlet vulnerabilities
 
 ### C/C++
-- **Parser**: Clang-based analysis
 - **Features**: Memory safety, buffer overflows, use-after-free
 - **Rules**: CERT C/C++, MISRA compliance
 
 ### Extensible Architecture
 Add new language support by:
-1. Implementing parser interface
-2. Adding language-specific rules
-3. Updating API Gateway configuration
+1. Adding language-specific rules to `rule-engine/rules/`
+2. Updating API Gateway configuration
+3. Testing with sample code
 
 ## 🔧 Troubleshooting
 
@@ -375,15 +353,25 @@ Add new language support by:
    semgrep --config=auto test/
    ```
 
+4. **Binary Build Issues**:
+   ```bash
+   cd rule-engine
+   ./build.sh
+   ./detect --source=../test/
+   ```
+
 ### API Gateway Issues
 1. **Connection Problems**:
    ```bash
    curl -u user:secret http://localhost:8080/api/health
    ```
 
-2. **Scan Status**:
+2. **Database Issues**:
    ```bash
-   curl -u user:secret http://localhost:8080/api/scans
+   # Check database
+   sqlite3 reports/data.db
+   # Reinitialize if needed
+   go run initdb.go db_setup.go
    ```
 
 3. **Permission Errors**:
@@ -392,19 +380,41 @@ Add new language support by:
    ```
 
 ### Build Issues
-1. **Java Compilation**:
+1. **Maven Build**:
    ```bash
-   javac -cp "lib/*" scanner.java
+   cd api-gateway
+   ./mvnw clean install
    ```
 
-2. **C++ Parser**:
+2. **Go Binary**:
    ```bash
-   cd cpp-parser/build && cmake ../ && make
+   cd rule-engine
+   ./build.sh
    ```
 
-3. **Missing Dependencies**:
+3. **Database Setup**:
    ```bash
-   ls -l lib/
-   echo $CLASSPATH
+   go run initdb.go db_setup.go
    ```
 
+## 🤝 Contributing
+
+We welcome contributions to J-Sentinel! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+### Development Setup
+1. Follow the installation instructions
+2. Set up your development environment
+3. Run tests to ensure everything works
+4. Make your changes and test thoroughly
+
+For detailed contributing guidelines, please see our [CONTRIBUTING.md](CONTRIBUTING.md) file.
+
+---
+
+**J-Sentinel** - Securing code, one scan at a time 🛡️

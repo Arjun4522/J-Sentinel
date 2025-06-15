@@ -1,80 +1,37 @@
-CLASSPATH=".:/home/arjun/Desktop/J-Sentinel:/home/arjun/.m2/repository/com/github/javaparser/javaparser-core/3.26.2/javaparser-core-3.26.2.jar:/home/arjun/.m2/repository/org/json/json/20240303/json-20240303.jar:/home/arjun/.m2/repository/org/jgrapht/jgrapht-core/1.5.2/jgrapht-core-1.5.2.jar:/home/arjun/.m2/repository/org/jheaps/jheaps/0.14/jheaps-0.14.jar:/home/arjun/.m2/repository/org/apfloat/apfloat/1.10.1/apfloat-1.10.1.jar"
-
-export API_USER=user
-export API_PASSWORD=secret
-
-mkdir -p /tmp/j-sentinel/uploads /tmp/j-sentinel/outputs
-
-chmod -R 777 /tmp/j-sentinel
-
-javac -cp "lib/*" scanner.java 
-javac -cp "lib/*" analysis.java
-javac -cp "lib/* cfg_extract.java
-javac -cp "lib/*" dfg_extract.java
-
-
-java -cp "lib/*:." scanner test/ --endpoint http://localhost:8080/api/scan
-
-curl -u user:secret http://localhost:8080/api/graph?scanId=<scan-ID>
-
-java -cp "lib/*:." analyse --api --endpoint http://localhost:8080/api/graph --scanId <scan-ID> --output output/taint_analysis.json
-
-java -cp "lib/*:." cfg_extract --scanId <scan-ID> -output output/cfg.json
-java -cp "lib/*:." dfg_extract --scanId <scan-ID> -output output/cfg.json
-
-curl -u user:secret "http://localhost:8080/api/graph?scanId=<scan-ID>" -o output/ast.json
-
-curl -u user:secret http://localhost:8080/api/health
-
-curl -u user:secret http://localhost:8080/api/cfg?scanId=<scanId>
-
-curl -u user:secret http://localhost:8080/api/dfg?scanId=<scanId>
-
-curl -u user:secret http://localhost:8080/api/taint_analyse?scanId=<scanId>
-
-Java Parser
------------
-
-cd ~/Desktop/J-Sentinel
-./jsentinel.sh scan --input test/ --endpoint http://localhost:8080/api --user user --password secret --output output/scan.json
-./jsentinel.sh cfg --endpoint http://localhost:8080/api --user user --password secret --output output/cfg.json
-./jsentinel.sh dfg --endpoint http://localhost:8080/api --user user --password secret --output output/dfg.json
-./jsentinel.sh taint --endpoint http://localhost:8080/api --user user --password secret --output output/taint_analysis.json
-
-
-C/C++ Parser
--------------
-
-cd cpp-parser/build
-rm -rf 
-cmake ../
-make
-
-./cpp_scanner ../test_code.cpp --local --output=../../output/codegraph_cpp.json --
-
-./cpp_scanner ../test_code.cpp --
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Spring API Gateway
 -------------------
 
+cd api-gateway/
+
+./mvnw clean install
 ./mvnw spring-boot:run
 
 DB
 ----
+
+# Set up sqlite DB connection and schema
 go run initdb.go db_setup.go
+
+# Check if DB and schema created
 sqlite3 reports/data.db
 
 Rule-engine
 ------------
 python3 detect_test.py -s ../test -r rules -v --log-file debug.log --use-semgrep-registry
 
+# Build go scanner binary
 ./build.sh
+
+# Test if binary working
 ./detect --source=../test/
 
 
 Rule-engine/API Gateway
 ------------------------
+
+# Trigger vulnerability scanner 
 
 curl -u user:secret -X POST http://localhost:8080/api/scan/trigger \
 -H "Content-Type: application/json" \
@@ -85,19 +42,16 @@ curl -u user:secret -X POST http://localhost:8080/api/scan/trigger \
   "useSemgrep": false
 }'
 
-------
-curl -u user:secret http://localhost:8080/api/scan/status/2a96d0e7-c8d2-4efd-8526-a552fb46f421
-
-curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/report
--------
 
 Tracking
 ---------
-
+# 1. Get all scans in-memory
 curl -u user:secret http://localhost:8080/api/scans
 
+# 2. Get specific scan metadata (by scanID) 
 curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/metadata
 
+# 3. Get specific scan report (by scanID) 
 curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/report
 
 History
