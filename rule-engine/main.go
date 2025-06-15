@@ -1,12 +1,15 @@
 package main
 
 import (
+	//"bufio"
 	"bytes"
 	"crypto/md5"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/fs"
+	"math"
+	"context"
+//	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +22,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	//"github.com/mattn/go-sqlite3"
+	"github.com/karrick/godirwalk"
 	"gopkg.in/yaml.v3"
 )
 
@@ -95,11 +98,98 @@ func (l *Logger) Critical(format string, args ...interface{}) {
 
 var logger *Logger
 
-// Rule represents a security detection rule
+type ScanStage string
+
+const (
+    StageDiscovering  ScanStage = "Discovering files"
+    StageLoadingRules ScanStage = "Loading rules"
+    StageScanning     ScanStage = "Scanning"
+    StageAnalyzing    ScanStage = "Analyzing results"
+    StageComplete     ScanStage = "Complete"
+)
+
+type ProgressTracker struct {
+    currentStage    ScanStage
+    stageStart      time.Time
+    totalFiles      int
+    filesDone       int
+    currentFile     string
+    mu              sync.Mutex
+    lastUpdate      time.Time
+    lastFileCount   int
+    lastUpdateTime  time.Time
+}
+
+func (pt *ProgressTracker) UpdateStage(stage ScanStage) {
+    pt.mu.Lock()
+    defer pt.mu.Unlock()
+    
+    if pt.currentStage != "" {
+        duration := time.Since(pt.stageStart)
+        fmt.Fprintf(os.Stderr, "✔ %s completed in %v\n", pt.currentStage, duration.Round(time.Millisecond))
+    }
+    
+    pt.currentStage = stage
+    pt.stageStart = time.Now()
+    pt.filesDone = 0 // Reset counter for new stage
+    fmt.Fprintf(os.Stderr, "➔ %s...\n", stage)
+}
+
+func (pt *ProgressTracker) UpdateFileProgress(filePath string) {
+    pt.mu.Lock()
+    defer pt.mu.Unlock()
+    
+    now := time.Now()
+    pt.filesDone++
+    pt.currentFile = filepath.Base(filePath)
+    
+    // Calculate progress percentage
+    progress := float64(pt.filesDone) / float64(pt.totalFiles)
+    
+    // Determine if we should update the display
+    shouldUpdate := pt.filesDone == pt.totalFiles || 
+                   now.Sub(pt.lastUpdate) > 200*time.Millisecond ||
+                   int(progress*100) > int(float64(pt.lastFileCount)/float64(pt.totalFiles)*100+1)
+    
+    if pt.totalFiles > 0 && shouldUpdate {
+        // Calculate ETA only if we've processed at least 5 files
+        var eta string
+        if pt.filesDone > 5 {
+            elapsed := now.Sub(pt.stageStart)
+            remaining := time.Duration(float64(elapsed) / float64(pt.filesDone) * float64(pt.totalFiles-pt.filesDone))
+            if remaining > 0 {
+                eta = fmt.Sprintf("ETA: %v", remaining.Round(time.Second))
+            } else {
+                eta = "Finishing..."
+            }
+        } else {
+            eta = "Calculating..."
+        }
+        
+        // Ensure we never show >100%
+        displayPercent := math.Min(progress*100, 100)
+        
+        // Clear the line before printing new progress
+        fmt.Fprintf(os.Stderr, "\r\033[K[%3.0f%%] %d/%d files | %s | %s", 
+            displayPercent, 
+            pt.filesDone, 
+            pt.totalFiles,
+            pt.currentFile,
+            eta)
+        
+        pt.lastUpdate = now
+        pt.lastFileCount = pt.filesDone
+    }
+    
+    if pt.filesDone == pt.totalFiles {
+        fmt.Fprintln(os.Stderr)
+    }
+}
+
 type Rule struct {
 	ID            string                 `yaml:"id" json:"id"`
 	Category      string                 `yaml:"category" json:"category"`
-	Type          string                 `yaml:"type" json:"type"` // 'semgrep', 'regex'
+	Type          string                 `yaml:"type" json:"type"`
 	Pattern       interface{}            `yaml:"pattern,flow" json:"pattern"`
 	Severity      string                 `yaml:"severity" json:"severity"`
 	Description   string                 `yaml:"message" json:"description"`
@@ -110,10 +200,9 @@ type Rule struct {
 	Confidence    string                 `yaml:"confidence" json:"confidence"`
 	Tags          []string               `yaml:"tags" json:"tags"`
 	Metadata      map[string]interface{} `yaml:"metadata,omitempty" json:"metadata,omitempty"`
-	FilePath      string                 // Path to the rule's YAML file
+	FilePath      string
 }
 
-// Normalize severity and set defaults
 func (r *Rule) Normalize() {
 	r.Severity = strings.ToUpper(r.Severity)
 	validSeverities := map[string]bool{
@@ -130,7 +219,6 @@ func (r *Rule) Normalize() {
 	}
 }
 
-// Vulnerability represents a detected security vulnerability
 type Vulnerability struct {
 	RuleID            string                 `json:"rule_id"`
 	Category          string                 `json:"category"`
@@ -149,7 +237,6 @@ type Vulnerability struct {
 	DependencyVersion string                 `json:"dependency_version,omitempty"`
 }
 
-// LanguagePatterns holds language detection patterns
 type LanguagePatterns struct {
 	Extensions []string          `json:"extensions"`
 	Keywords   map[string]bool   `json:"keywords"`
@@ -157,9 +244,10 @@ type LanguagePatterns struct {
 	DataTypes  map[string]bool   `json:"data_types"`
 }
 
-// LanguageDetector provides language detection functionality
 type LanguageDetector struct {
-	patterns map[string]LanguagePatterns
+	patterns      map[string]LanguagePatterns
+	extensionMap  map[string]string
+	fileTypeCache sync.Map
 }
 
 func NewLanguageDetector() *LanguageDetector {
@@ -228,33 +316,41 @@ func NewLanguageDetector() *LanguageDetector {
 		},
 	}
 
-	return &LanguageDetector{patterns: patterns}
-}
-
-func (ld *LanguageDetector) DetectFromFile(filePath string) string {
-	// Check by extension first
-	ext := strings.ToLower(filepath.Ext(filePath))
-	for lang, patterns := range ld.patterns {
-		for _, extension := range patterns.Extensions {
-			if ext == extension {
-				return lang
-			}
+	extensionMap := make(map[string]string)
+	for lang, p := range patterns {
+		for _, ext := range p.Extensions {
+			extensionMap[ext] = lang
 		}
 	}
 
-	// If extension detection fails, analyze content
-	content, err := os.ReadFile(filePath)
+	return &LanguageDetector{
+		patterns:     patterns,
+		extensionMap: extensionMap,
+	}
+}
+
+func (ld *LanguageDetector) DetectFromFile(filePath string) string {
+	if lang, ok := ld.fileTypeCache.Load(filePath); ok {
+		return lang.(string)
+	}
+
+	ext := strings.ToLower(filepath.Ext(filePath))
+	if lang, exists := ld.extensionMap[ext]; exists {
+		ld.fileTypeCache.Store(filePath, lang)
+		return lang
+	}
+
+	file, err := os.Open(filePath)
 	if err != nil {
-		logger.Debug("Error reading file %s: %v", filePath, err)
 		return "unknown"
 	}
+	defer file.Close()
 
-	// Read first 1KB for analysis
-	if len(content) > 1024 {
-		content = content[:1024]
-	}
-
-	return ld.analyzeContent(string(content))
+	buf := make([]byte, 1024)
+	n, _ := file.Read(buf)
+	lang := ld.analyzeContent(string(buf[:n]))
+	ld.fileTypeCache.Store(filePath, lang)
+	return lang
 }
 
 func (ld *LanguageDetector) analyzeContent(content string) string {
@@ -270,7 +366,6 @@ func (ld *LanguageDetector) analyzeContent(content string) string {
 		scores[lang] = score
 	}
 
-	// Find language with highest score
 	maxScore := 0
 	detectedLang := "unknown"
 	for lang, score := range scores {
@@ -301,7 +396,6 @@ func (ld *LanguageDetector) GetFileExtension(language string) string {
 	return ".txt"
 }
 
-// Statistics holds scan statistics
 type Statistics struct {
 	FilesProcessed      int           `json:"files_processed"`
 	RulesLoaded         int           `json:"rules_loaded"`
@@ -311,10 +405,15 @@ type Statistics struct {
 	ScanDuration        time.Duration `json:"scan_duration"`
 }
 
-// VulnerabilityDetector is the main detection engine
+type RuleCache struct {
+	rules     []Rule
+	timestamp time.Time
+}
+
 type VulnerabilityDetector struct {
 	config             map[string]interface{}
 	rules              map[string][]Rule
+	ruleCache          map[string]*RuleCache
 	vulnerabilities    []Vulnerability
 	sourceDir          string
 	outputPath         string
@@ -325,19 +424,23 @@ type VulnerabilityDetector struct {
 	languageDetector   *LanguageDetector
 	stats              Statistics
 	mu                 sync.Mutex
+	fileQueue          chan string
+	resultQueue        chan []Vulnerability
+	progress           ProgressTracker
 }
 
 func NewVulnerabilityDetector(config map[string]interface{}) *VulnerabilityDetector {
 	sourceDir := getStringConfig(config, "source_dir", ".")
 	rulesDir := getStringConfig(config, "rules_dir", "rules")
 	outputPath := getStringConfig(config, "output_path", "vulnerability_report.json")
-	maxWorkers := getIntConfig(config, "max_workers", runtime.NumCPU()) // Increased default for better concurrency
+	maxWorkers := getIntConfig(config, "max_workers", runtime.NumCPU())
 	timeout := getIntConfig(config, "timeout", 300)
 	useSemgrepRegistry := getBoolConfig(config, "use_semgrep_registry", false)
 
 	detector := &VulnerabilityDetector{
 		config:             config,
 		rules:              make(map[string][]Rule),
+		ruleCache:          make(map[string]*RuleCache),
 		vulnerabilities:    []Vulnerability{},
 		sourceDir:          sourceDir,
 		outputPath:         outputPath,
@@ -347,9 +450,10 @@ func NewVulnerabilityDetector(config map[string]interface{}) *VulnerabilityDetec
 		useSemgrepRegistry: useSemgrepRegistry,
 		languageDetector:   NewLanguageDetector(),
 		stats:              Statistics{},
+		fileQueue:          make(chan string, maxWorkers*10),
+		resultQueue:        make(chan []Vulnerability, maxWorkers*10),
 	}
 
-	// Create default rules if rules directory doesn't exist
 	if _, err := os.Stat(rulesDir); os.IsNotExist(err) {
 		detector.createDefaultRules()
 	}
@@ -456,389 +560,391 @@ func (vd *VulnerabilityDetector) createDefaultRules() {
 	logger.Info("Created default rules in %s", vd.rulesDir)
 }
 
-func (vd *VulnerabilityDetector) ScanCodebase() (map[string]interface{}, error) {
-	startTime := time.Now()
-	vd.stats.ScanStartTime = &startTime
-	logger.Info("Starting vulnerability scan of %s", vd.sourceDir)
+func (vd *VulnerabilityDetector) discoverSourceFiles() ([]string, error) {
+	var sourceFiles []string
+	var mu sync.Mutex
 
-	// Discover files concurrently
-	sourceFiles, err := vd.discoverSourceFiles()
+	skipDirs := map[string]bool{
+		"node_modules": true, "__pycache__": true, "venv": true, "env": true,
+		"build": true, "dist": true, "target": true, ".git": true, ".svn": true,
+		".hg": true, "vendor": true,
+	}
+
+	fileInfo, err := os.Stat(vd.sourceDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to discover source files: %w", err)
+		return nil, fmt.Errorf("failed to stat source path %s: %w", vd.sourceDir, err)
 	}
 
-	if len(sourceFiles) == 0 {
-		logger.Warning("No source files found to scan")
-		return vd.generateReport(), nil
+	if !fileInfo.IsDir() {
+		ext := strings.ToLower(filepath.Ext(vd.sourceDir))
+		if _, exists := vd.languageDetector.extensionMap[ext]; exists {
+			return []string{vd.sourceDir}, nil
+		}
+		return nil, fmt.Errorf("single file %s has unsupported extension", vd.sourceDir)
 	}
 
-	logger.Info("Found %d source files", len(sourceFiles))
-
-	// Process files in parallel
-	jobs := make(chan string, len(sourceFiles))
-	results := make(chan []Vulnerability, len(sourceFiles))
-
-	// Start workers
-	var wg sync.WaitGroup
-	for i := 0; i < vd.maxWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for filePath := range jobs {
-				vulns := vd.processFile(filePath)
-				results <- vulns
+	err = godirwalk.Walk(vd.sourceDir, &godirwalk.Options{
+		Unsorted: true,
+		Callback: func(path string, de *godirwalk.Dirent) error {
+			if de.IsDir() {
+				if skipDirs[de.Name()] {
+					return filepath.SkipDir
+				}
+				return nil
 			}
-		}()
-	}
 
-	// Send jobs
-	go func() {
-		defer close(jobs)
-		for _, filePath := range sourceFiles {
-			jobs <- filePath
-		}
-	}()
+			if ext := strings.ToLower(filepath.Ext(path)); ext != "" {
+				if _, exists := vd.languageDetector.extensionMap[ext]; exists {
+					mu.Lock()
+					sourceFiles = append(sourceFiles, path)
+					mu.Unlock()
+				}
+			}
+			return nil
+		},
+		ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
+			logger.Debug("Error walking %s: %v", path, err)
+			return godirwalk.SkipNode
+		},
+	})
 
-	// Collect results
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	for vulns := range results {
-		vd.mu.Lock()
-		vd.vulnerabilities = append(vd.vulnerabilities, vulns...)
-		vd.stats.FilesProcessed++
-		vd.mu.Unlock()
-
-		if len(vulns) > 0 {
-			logger.Info("Found %d vulnerabilities in file", len(vulns))
-		}
-	}
-
-	endTime := time.Now()
-	vd.stats.ScanEndTime = &endTime
-	vd.stats.ScanDuration = endTime.Sub(startTime)
-	vd.stats.VulnerabilitiesFound = len(vd.vulnerabilities)
-
-	// Generate and save report
-	report := vd.generateReport()
-	vd.saveReport(report)
-
-	return report, nil
+	return sourceFiles, err
 }
 
-func (vd *VulnerabilityDetector) discoverSourceFiles() ([]string, error) {
-    var sourceFiles []string
-    var mu sync.Mutex // Thread-safe append to sourceFiles
-
-    // Get all supported extensions
-    allExtensions := make(map[string]bool)
-    for _, patterns := range vd.languageDetector.patterns {
-        for _, ext := range patterns.Extensions {
-            allExtensions[ext] = true
-        }
-    }
-
-    // Skip common non-source directories
-    skipDirs := map[string]bool{
-        "node_modules": true, "__pycache__": true, "venv": true, "env": true,
-        "build": true, "dist": true, "target": true, ".git": true, ".svn": true,
-        ".hg": true, "vendor": true,
-    }
-
-    // Check if sourceDir is a file
-    fileInfo, err := os.Stat(vd.sourceDir)
+func (vd *VulnerabilityDetector) ScanCodebase() (map[string]interface{}, error) {
+    startTime := time.Now()
+    vd.stats.ScanStartTime = &startTime
+    vd.progress.UpdateStage(StageDiscovering)
+    
+    logger.Debug("Discovering source files...")
+    sourceFiles, err := vd.discoverSourceFiles()
     if err != nil {
-        return nil, fmt.Errorf("failed to stat source path %s: %w", vd.sourceDir, err)
+        return nil, fmt.Errorf("failed to discover source files: %w", err)
     }
 
-    if !fileInfo.IsDir() {
-        // Single file input
-        ext := strings.ToLower(filepath.Ext(vd.sourceDir))
-        if allExtensions[ext] {
-            sourceFiles = append(sourceFiles, vd.sourceDir)
-            logger.Debug("Single file input detected: %s", vd.sourceDir)
-            return sourceFiles, nil
-        }
-        return nil, fmt.Errorf("single file %s has unsupported extension", vd.sourceDir)
+    vd.progress.totalFiles = len(sourceFiles)
+    vd.progress.UpdateStage(StageLoadingRules)
+    logger.Debug("Found %d source files", len(sourceFiles))
+    if len(sourceFiles) == 0 {
+        logger.Warning("No source files found to scan")
+        return vd.generateReport(), nil
     }
 
-    // Directory input: proceed with concurrent traversal
-    var initialDirs []string
-    var initialFiles []string
-    dirEntries, err := os.ReadDir(vd.sourceDir)
-    if err != nil {
-        return nil, fmt.Errorf("failed to read directory %s: %w", vd.sourceDir, err)
+    logger.Info("Found %d source files", len(sourceFiles))
+
+    // Group files by language
+    filesByLanguage := make(map[string][]string)
+    for _, file := range sourceFiles {
+        lang := vd.languageDetector.DetectFromFile(file)
+        filesByLanguage[lang] = append(filesByLanguage[lang], file)
     }
 
-    for _, entry := range dirEntries {
-        path := filepath.Join(vd.sourceDir, entry.Name())
-        if entry.IsDir() {
-            if !strings.HasPrefix(entry.Name(), ".") && !skipDirs[entry.Name()] {
-                initialDirs = append(initialDirs, path)
-            }
-        } else if ext := strings.ToLower(filepath.Ext(path)); allExtensions[ext] {
-            initialFiles = append(initialFiles, path)
-        }
-    }
+    vd.progress.UpdateStage(StageScanning)
+    
+    ctx, cancel := context.WithTimeout(context.Background(), time.Duration(vd.timeout)*time.Second)
+    defer cancel()
 
-    // Add initial files
-    mu.Lock()
-    sourceFiles = append(sourceFiles, initialFiles...)
-    mu.Unlock()
-
-    // Process directories concurrently
-    dirJobs := make(chan string, len(initialDirs))
-    fileResults := make(chan []string, len(initialDirs))
-
-    // Start workers for directory traversal
     var wg sync.WaitGroup
-    numWorkers := min(vd.maxWorkers, len(initialDirs)+1)
-    for i := 0; i < numWorkers; i++ {
+    resultChan := make(chan []Vulnerability, len(filesByLanguage))
+
+    for lang, files := range filesByLanguage {
+        wg.Add(1)
+        go func(language string, fileList []string) {
+            defer wg.Done()
+            
+            select {
+            case <-ctx.Done():
+                logger.Debug("Skipping language %s due to timeout", language)
+                resultChan <- []Vulnerability{}
+                return
+            default:
+                vulns := vd.batchProcessSemgrepRules(language, fileList)
+                
+                var regexWg sync.WaitGroup
+                regexChan := make(chan []Vulnerability, len(fileList))
+                
+                for _, file := range fileList {
+                    regexWg.Add(1)
+                    go func(f string) {
+                        defer regexWg.Done()
+                        content, err := os.ReadFile(f)
+                        if err != nil {
+                            logger.Error("Failed to read file %s: %v", f, err)
+                            regexChan <- []Vulnerability{}
+                            return
+                        }
+                        
+                        rules := vd.loadRules(language)
+                        var regexRules []Rule
+                        for _, rule := range rules {
+                            if rule.Type == "regex" {
+                                regexRules = append(regexRules, rule)
+                            }
+                        }
+                        
+                        regexChan <- vd.applyRulesToContent(regexRules, string(content), f, language)
+                    }(file)
+                }
+                
+                go func() {
+                    regexWg.Wait()
+                    close(regexChan)
+                }()
+                
+                for regexVulns := range regexChan {
+                    vulns = append(vulns, regexVulns...)
+                }
+                
+                resultChan <- vulns
+            }
+        }(lang, files)
+    }
+
+    go func() {
+        wg.Wait()
+        close(resultChan)
+    }()
+
+    resultsDone := make(chan struct{})
+    go func() {
+        for vulns := range resultChan {
+            vd.mu.Lock()
+            vd.vulnerabilities = append(vd.vulnerabilities, vulns...)
+            vd.stats.FilesProcessed += len(vulns)
+            vd.mu.Unlock()
+        }
+        close(resultsDone)
+    }()
+
+    select {
+    case <-resultsDone:
+        logger.Debug("Finished processing all results")
+    case <-ctx.Done():
+        logger.Warning("Scan timed out after %d seconds", vd.timeout)
+        return nil, fmt.Errorf("scan timed out after %d seconds", vd.timeout)
+    }
+
+    vd.progress.UpdateStage(StageAnalyzing)
+    
+    endTime := time.Now()
+    vd.stats.ScanEndTime = &endTime
+    vd.stats.ScanDuration = endTime.Sub(startTime)
+    vd.stats.VulnerabilitiesFound = len(vd.vulnerabilities)
+
+    report := vd.generateReport()
+    vd.saveReport(report)
+    
+    vd.progress.UpdateStage(StageComplete)
+    return report, nil
+}
+
+
+func (vd *VulnerabilityDetector) applyRulesToContent(rules []Rule, content, filePath, language string) []Vulnerability {
+    vd.progress.UpdateFileProgress(filePath)
+    
+    var vulnerabilities []Vulnerability
+    var mu sync.Mutex
+    var wg sync.WaitGroup
+
+    ruleChan := make(chan Rule, len(rules))
+    resultChan := make(chan []Vulnerability, len(rules))
+
+    for i := 0; i < min(vd.maxWorkers, len(rules)); i++ {
         wg.Add(1)
         go func() {
             defer wg.Done()
-            for dirPath := range dirJobs {
-                var localFiles []string
-                err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
-                    if err != nil {
-                        return err
-                    }
-                    if d.IsDir() {
-                        dirName := d.Name()
-                        if strings.HasPrefix(dirName, ".") || skipDirs[dirName] {
-                            return filepath.SkipDir
-                        }
-                        return nil
-                    }
-                    if ext := strings.ToLower(filepath.Ext(path)); allExtensions[ext] {
-                        localFiles = append(localFiles, path)
-                    }
-                    return nil
-                })
-                if err != nil {
-                    logger.Error("Error walking directory %s: %v", dirPath, err)
+            for rule := range ruleChan {
+                var vulns []Vulnerability
+                if rule.Type == "regex" {
+                    vulns = vd.applyRegexRule(rule, content, filePath)
                 }
-                fileResults <- localFiles
+                resultChan <- vulns
             }
         }()
     }
 
-    // Send directory jobs
     go func() {
-        defer close(dirJobs)
-        for _, dirPath := range initialDirs {
-            dirJobs <- dirPath
+        for _, rule := range rules {
+            ruleChan <- rule
         }
+        close(ruleChan)
     }()
 
-    // Collect file results
     go func() {
         wg.Wait()
-        close(fileResults)
+        close(resultChan)
     }()
 
-    // Aggregate files
-    for files := range fileResults {
+    for vulns := range resultChan {
         mu.Lock()
-        sourceFiles = append(sourceFiles, files...)
+        vulnerabilities = append(vulnerabilities, vulns...)
         mu.Unlock()
     }
 
-    return sourceFiles, nil
-}
-
-func (vd *VulnerabilityDetector) processFile(filePath string) []Vulnerability {
-	var vulnerabilities []Vulnerability
-	var mu sync.Mutex // Thread-safe vulnerability collection
-
-	// Detect language
-	language := vd.languageDetector.DetectFromFile(filePath)
-	if language == "unknown" {
-		logger.Debug("Unknown language for file: %s", filePath)
-		return vulnerabilities
-	}
-
-	// Read file content
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		logger.Error("Error reading file %s: %v", filePath, err)
-		return vulnerabilities
-	}
-
-	// Load local rules for this language
-	rules := vd.loadRules(language)
-	if len(rules) > 0 {
-		logger.Info("Applying %d local rules for %s to %s", len(rules), language, filePath)
-
-		// Create channels for rule processing
-		ruleJobs := make(chan Rule, len(rules))
-		ruleResults := make(chan []Vulnerability, len(rules))
-
-		// Start worker pool for rule application
-		var wg sync.WaitGroup
-		numRuleWorkers := min(vd.maxWorkers, len(rules))
-		for i := 0; i < numRuleWorkers; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for rule := range ruleJobs {
-					ruleVulns := vd.applyRule(rule, string(content), filePath, language)
-					ruleResults <- ruleVulns
-				}
-			}()
-		}
-
-		// Send rules to workers
-		go func() {
-			defer close(ruleJobs)
-			for _, rule := range rules {
-				ruleJobs <- rule
-			}
-		}()
-
-		// Collect rule results
-		go func() {
-			wg.Wait()
-			close(ruleResults)
-		}()
-
-		// Aggregate vulnerabilities
-		for ruleVulns := range ruleResults {
-			mu.Lock()
-			vulnerabilities = append(vulnerabilities, ruleVulns...)
-			mu.Unlock()
-		}
-	} else {
-		logger.Debug("No local rules found for language: %s", language)
-	}
-
-	// Perform real-time Semgrep scan if enabled
-	if vd.useSemgrepRegistry {
-		logger.Info("Performing real-time Semgrep scan for %s on %s", language, filePath)
-		semgrepVulns := vd.realtimeSemgrepScan(language, string(content), filePath)
-		mu.Lock()
-		vulnerabilities = append(vulnerabilities, semgrepVulns...)
-		mu.Unlock()
-	}
-
-	return vulnerabilities
+    return vulnerabilities
 }
 
 func (vd *VulnerabilityDetector) loadRules(language string) []Rule {
-	vd.mu.Lock()
-	if rules, exists := vd.rules[language]; exists {
-		vd.mu.Unlock()
-		return rules
-	}
-	vd.mu.Unlock()
+    var rules []Rule
+    var mu sync.Mutex
+    langRulesDir := filepath.Join(vd.rulesDir, language)
 
+    if _, err := os.Stat(langRulesDir); os.IsNotExist(err) {
+        return rules
+    }
+
+    var ruleFiles []string
+    err := godirwalk.Walk(langRulesDir, &godirwalk.Options{
+        Unsorted: true,
+        Callback: func(path string, de *godirwalk.Dirent) error {
+            if !de.IsDir() && (strings.HasSuffix(strings.ToLower(path), ".yaml") || 
+                strings.HasSuffix(strings.ToLower(path), ".yml")) {
+                ruleFiles = append(ruleFiles, path)
+            }
+            return nil
+        },
+    })
+    if err != nil {
+        logger.Error("Error walking rules directory %s: %v", langRulesDir, err)
+        return rules
+    }
+
+    var wg sync.WaitGroup
+    fileChan := make(chan string, len(ruleFiles))
+    resultChan := make(chan []Rule, len(ruleFiles))
+
+    for i := 0; i < min(vd.maxWorkers, len(ruleFiles)); i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            for path := range fileChan {
+                fileRules, err := vd.loadRulesFromFile(path, language)
+                if err != nil {
+                    logger.Error("Error loading rule file %s: %v", path, err)
+                    resultChan <- []Rule{}
+                    continue
+                }
+                for i := range fileRules {
+                    fileRules[i].FilePath = path
+                }
+                resultChan <- fileRules
+            }
+        }()
+    }
+
+    go func() {
+        for _, path := range ruleFiles {
+            fileChan <- path
+        }
+        close(fileChan)
+    }()
+
+    go func() {
+        wg.Wait()
+        close(resultChan)
+    }()
+
+    for fileRules := range resultChan {
+        mu.Lock()
+        rules = append(rules, fileRules...)
+        vd.stats.RulesLoaded += len(fileRules)
+        mu.Unlock()
+    }
+
+    return rules
+}
+
+func (vd *VulnerabilityDetector) loadRulesFromDisk(language string) []Rule {
 	var rules []Rule
 	var mu sync.Mutex
 	langRulesDir := filepath.Join(vd.rulesDir, language)
 
 	if _, err := os.Stat(langRulesDir); os.IsNotExist(err) {
-		logger.Debug("No rules directory for language: %s", language)
 		return rules
 	}
 
-	// Collect YAML file paths
 	var ruleFiles []string
-	err := filepath.WalkDir(langRulesDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && (strings.HasSuffix(strings.ToLower(path), ".yaml") || strings.HasSuffix(strings.ToLower(path), ".yml")) {
-			ruleFiles = append(ruleFiles, path)
-		}
-		return nil
+	err := godirwalk.Walk(langRulesDir, &godirwalk.Options{
+		Unsorted: true,
+		Callback: func(path string, de *godirwalk.Dirent) error {
+			if !de.IsDir() && (strings.HasSuffix(strings.ToLower(path), ".yaml") || 
+				strings.HasSuffix(strings.ToLower(path), ".yml")) {
+				ruleFiles = append(ruleFiles, path)
+			}
+			return nil
+		},
 	})
 	if err != nil {
 		logger.Error("Error walking rules directory %s: %v", langRulesDir, err)
 		return rules
 	}
 
-	// Create channels for rule loading
-	fileJobs := make(chan string, len(ruleFiles))
-	ruleResults := make(chan []Rule, len(ruleFiles))
-
-	// Start worker pool for rule loading
 	var wg sync.WaitGroup
-	numWorkers := min(vd.maxWorkers, len(ruleFiles))
-	for i := 0; i < numWorkers; i++ {
+	fileChan := make(chan string, len(ruleFiles))
+	resultChan := make(chan []Rule, len(ruleFiles))
+
+	for i := 0; i < min(vd.maxWorkers, len(ruleFiles)); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for path := range fileJobs {
+			for path := range fileChan {
 				fileRules, err := vd.loadRulesFromFile(path, language)
 				if err != nil {
-					logger.Error("Error loading rule file %s: %v", path, err)
-					ruleResults <- []Rule{}
+					resultChan <- []Rule{}
 					continue
 				}
 				for i := range fileRules {
 					fileRules[i].FilePath = path
 				}
-				ruleResults <- fileRules
+				resultChan <- fileRules
 			}
 		}()
 	}
 
-	// Send file paths to workers
 	go func() {
-		defer close(fileJobs)
 		for _, path := range ruleFiles {
-			fileJobs <- path
+			fileChan <- path
 		}
+		close(fileChan)
 	}()
 
-	// Collect rule results
 	go func() {
 		wg.Wait()
-		close(ruleResults)
+		close(resultChan)
 	}()
 
-	// Aggregate rules
-	for fileRules := range ruleResults {
+	for fileRules := range resultChan {
 		mu.Lock()
 		rules = append(rules, fileRules...)
 		mu.Unlock()
 	}
 
-	vd.mu.Lock()
-	vd.rules[language] = rules
-	vd.stats.RulesLoaded += len(rules)
-	vd.mu.Unlock()
-
 	return rules
 }
 
 func (vd *VulnerabilityDetector) loadRulesFromFile(filePath, language string) ([]Rule, error) {
-	var rules []Rule
+    data, err := os.ReadFile(filePath)
+    if err != nil {
+        return nil, fmt.Errorf("failed to read rule file %s: %w", filePath, err)
+    }
 
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return rules, err
-	}
+    var ruleData struct {
+        Rules []map[string]interface{} `yaml:"rules"`
+    }
 
-	var ruleData struct {
-		Rules []map[string]interface{} `yaml:"rules"`
-	}
+    if err := yaml.Unmarshal(data, &ruleData); err != nil {
+        return nil, fmt.Errorf("invalid YAML in rule file %s: %w", filePath, err)
+    }
 
-	err = yaml.Unmarshal(data, &ruleData)
-	if err != nil {
-		return rules, err
-	}
+    var rules []Rule
+    for _, ruleDict := range ruleData.Rules {
+        rule := vd.createRuleFromDict(ruleDict, language)
+        if rule != nil {
+            rules = append(rules, *rule)
+        }
+    }
 
-	for _, ruleDict := range ruleData.Rules {
-		rule := vd.createRuleFromDict(ruleDict, language)
-		if rule != nil {
-			rules = append(rules, *rule)
-		}
-	}
-
-	return rules, nil
+    return rules, nil
 }
 
 func (vd *VulnerabilityDetector) createRuleFromDict(ruleDict map[string]interface{}, language string) *Rule {
@@ -872,18 +978,6 @@ func (vd *VulnerabilityDetector) createRuleFromDict(ruleDict map[string]interfac
 	return rule
 }
 
-func (vd *VulnerabilityDetector) applyRule(rule Rule, content, filePath, language string) []Vulnerability {
-	switch rule.Type {
-	case "regex":
-		return vd.applyRegexRule(rule, content, filePath)
-	case "semgrep":
-		return vd.applySemgrepRule(rule, content, filePath, language)
-	default:
-		logger.Debug("Unknown rule type %s for rule %s", rule.Type, rule.ID)
-		return []Vulnerability{}
-	}
-}
-
 func (vd *VulnerabilityDetector) applyRegexRule(rule Rule, content, filePath string) []Vulnerability {
 	var vulnerabilities []Vulnerability
 
@@ -896,7 +990,6 @@ func (vd *VulnerabilityDetector) applyRegexRule(rule Rule, content, filePath str
 			pattern = patternStr
 		}
 	default:
-		logger.Error("Invalid pattern type in rule %s", rule.ID)
 		return vulnerabilities
 	}
 
@@ -949,51 +1042,198 @@ func (vd *VulnerabilityDetector) applyRegexRule(rule Rule, content, filePath str
 }
 
 func (vd *VulnerabilityDetector) applySemgrepRule(rule Rule, content, filePath, language string) []Vulnerability {
-	// Create temporary directory
-	tmpDir, err := os.MkdirTemp("", "semgrep_scan_*")
-	if err != nil {
-		logger.Error("Failed to create temp directory: %v", err)
-		return []Vulnerability{}
-	}
-	defer os.RemoveAll(tmpDir)
+    // This is now handled in batchProcessSemgrepRules
+    return []Vulnerability{}
+}
 
-	// Create source file
-	ext := vd.languageDetector.GetFileExtension(language)
-	sourceFile := filepath.Join(tmpDir, "source"+ext)
-	err = os.WriteFile(sourceFile, []byte(content), 0644)
-	if err != nil {
-		logger.Error("Failed to create temp source file: %v", err)
-		return []Vulnerability{}
-	}
+func (vd *VulnerabilityDetector) batchProcessSemgrepRules(language string, files []string) []Vulnerability {
+    if len(files) == 0 {
+        return []Vulnerability{}
+    }
 
-	// Log source file content for debugging
-	sourceContent, _ := os.ReadFile(sourceFile)
-	logger.Debug("Source file content for %s:\n%s", sourceFile, string(sourceContent))
+    /*for _, file := range files {
+        vd.progress.UpdateFileProgress(file)
+    }*/
 
-	// Use the rule's original YAML file
-	if rule.FilePath == "" {
-		logger.Error("No file path specified for rule %s", rule.ID)
-		return []Vulnerability{}
-	}
+    langRulesDir := filepath.Join(vd.rulesDir, language)
+    if _, err := os.Stat(langRulesDir); os.IsNotExist(err) {
+        logger.Debug("No rules directory for language %s", language)
+        return []Vulnerability{}
+    }
 
-	// Validate rule file exists
-	if _, err := os.Stat(rule.FilePath); os.IsNotExist(err) {
-		logger.Error("Rule file %s does not exist for rule %s", rule.FilePath, rule.ID)
-		return []Vulnerability{}
-	}
+    hasSemgrepRules := false
+    err := filepath.Walk(langRulesDir, func(path string, info os.FileInfo, err error) error {
+        if err != nil {
+            return err
+        }
+        if !info.IsDir() && (strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")) {
+            hasSemgrepRules = true
+            return filepath.SkipDir
+        }
+        return nil
+    })
 
-	// Log rule file content for debugging
-	ruleContent, _ := os.ReadFile(rule.FilePath)
-	logger.Debug("Applying Semgrep rule %s from %s", rule.ID, rule.FilePath)
-	logger.Debug("Rule file content for %s:\n%s", rule.FilePath, string(ruleContent))
+    if err != nil || !hasSemgrepRules {
+        logger.Debug("No Semgrep rules found for language %s", language)
+        return []Vulnerability{}
+    }
 
-	// Execute Semgrep
-	return vd.executeSemgrep(rule.FilePath, sourceFile, filePath, language)
+    args := []string{
+        "semgrep",
+        "--config", langRulesDir,
+        "--json",
+        "--quiet",
+        "--timeout", strconv.Itoa(vd.timeout),
+    }
+    args = append(args, files...)
+
+    logger.Debug("Executing Semgrep batch command for %s: %v", language, args)
+
+    cmd := exec.Command(args[0], args[1:]...)
+    var stdout, stderr bytes.Buffer
+    cmd.Stdout = &stdout
+    cmd.Stderr = &stderr
+
+    startTime := time.Now()
+    err = cmd.Run()
+    duration := time.Since(startTime)
+
+    if err != nil {
+        if exitErr, ok := err.(*exec.ExitError); ok {
+            if exitErr.ExitCode() != 1 {
+                logger.Error("Batch semgrep failed for language %s with exit code %d: %s", 
+                    language, exitErr.ExitCode(), stderr.String())
+                return []Vulnerability{}
+            }
+        } else {
+            logger.Error("Batch semgrep failed for language %s: %v, stderr: %s", 
+                language, err, stderr.String())
+            return []Vulnerability{}
+        }
+    }
+
+    logger.Debug("Semgrep batch processing for %s completed in %v", language, duration)
+
+    var semgrepOutput struct {
+        Results []struct {
+            RuleID    string `json:"check_id"`
+            Message   string `json:"message"`
+            Path      string `json:"path"`
+            Start     struct {
+                Line int `json:"line"`
+                Col  int `json:"col"`
+            } `json:"start"`
+            End struct {
+                Line int `json:"line"`
+                Col  int `json:"col"`
+            } `json:"end"`
+            Severity string `json:"severity"`
+            Extra    struct {
+                Message   string                 `json:"message"`
+                Metadata  map[string]interface{} `json:"metadata"`
+                Severity  string                 `json:"severity"`
+                Lines     string                 `json:"lines"`
+            } `json:"extra"`
+        } `json:"results"`
+    }
+
+    if err := json.Unmarshal(stdout.Bytes(), &semgrepOutput); err != nil {
+        logger.Error("Failed to parse batch Semgrep JSON output for language %s: %v", language, err)
+        return []Vulnerability{}
+    }
+
+    var vulnerabilities []Vulnerability
+    for _, result := range semgrepOutput.Results {
+        originalPath := result.Path
+        if !filepath.IsAbs(originalPath) {
+            absPath, err := filepath.Abs(originalPath)
+            if err == nil {
+                originalPath = absPath
+            }
+        }
+
+        location := fmt.Sprintf("%s:%d:%d", filepath.Base(originalPath), result.Start.Line, result.Start.Col)
+        hash := md5.Sum([]byte(fmt.Sprintf("%s:%s", result.RuleID, location)))
+
+        cweid := ""
+        owasp := ""
+        confidence := "HIGH"
+
+        if result.Extra.Metadata != nil {
+            if cwe, ok := result.Extra.Metadata["cwe"].(string); ok {
+                cweid = cwe
+            } else if cweSlice, ok := result.Extra.Metadata["cwe"].([]interface{}); ok && len(cweSlice) > 0 {
+                if cweStr, ok := cweSlice[0].(string); ok {
+                    cweid = cweStr
+                }
+            }
+            if owaspVal, ok := result.Extra.Metadata["owasp"].(string); ok {
+                owasp = owaspVal
+            }
+            if conf, ok := result.Extra.Metadata["confidence"].(string); ok {
+                confidence = conf
+            }
+        }
+
+        severity := result.Severity
+        if severity == "" {
+            severity = result.Extra.Severity
+        }
+        switch strings.ToUpper(severity) {
+        case "ERROR":
+            severity = "HIGH"
+        case "WARNING":
+            severity = "MEDIUM"
+        case "INFO":
+            severity = "LOW"
+        default:
+            severity = "MEDIUM"
+        }
+
+        details := result.Message
+        if details == "" {
+            details = result.Extra.Message
+        }
+        if details == "" {
+            details = "Vulnerability detected by Semgrep"
+        }
+
+        codeSnippet := strings.TrimSpace(result.Extra.Lines)
+        if codeSnippet == "" {
+            codeSnippet = "Content unavailable"
+        }
+
+        vulnerability := Vulnerability{
+            RuleID:            result.RuleID,
+            Category:          "Security",
+            Severity:          severity,
+            Location:          location,
+            Details:           details,
+            Remediation:       "Follow Semgrep recommendations",
+            Context: map[string]interface{}{
+                "file_path": originalPath,
+                "lines":     result.Extra.Lines,
+                "semgrep":   true,
+                "batch":     true,
+            },
+            CWEIDependency:    cweid,
+            OWASPDependency:   owasp,
+            Confidence:        confidence,
+            DependencyFile:    fmt.Sprintf("%x", hash),
+            LineNumber:        result.Start.Line,
+            ColumnNumber:      result.Start.Col,
+            CodeSnippet:       codeSnippet,
+            DependencyVersion: "",
+        }
+
+        vulnerabilities = append(vulnerabilities, vulnerability)
+    }
+
+    logger.Debug("Found %d vulnerabilities for language %s", len(vulnerabilities), language)
+    return vulnerabilities
 }
 
 func (vd *VulnerabilityDetector) executeSemgrep(rulesFile, sourceFile, originalFile, language string) []Vulnerability {
-	var vulnerabilities []Vulnerability
-
 	args := []string{
 		"semgrep",
 		"--config", rulesFile,
@@ -1008,17 +1248,15 @@ func (vd *VulnerabilityDetector) executeSemgrep(rulesFile, sourceFile, originalF
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	logger.Debug("Executing Semgrep command: %s", strings.Join(args, " "))
-
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			logger.Error("Semgrep failed for rule file %s with exit code %d: %s", rulesFile, exitErr.ExitCode(), stderr.String())
-			logger.Debug("Semgrep stdout: %s", stdout.String())
+			logger.Error("Semgrep failed for rule file %s with exit code %d: %s", 
+				rulesFile, exitErr.ExitCode(), stderr.String())
 		} else {
-			logger.Error("Semgrep failed for rule file %s: %v, stderr: %s, stdout: %s", rulesFile, err, stderr.String(), stdout.String())
+			logger.Error("Semgrep failed for rule file %s: %v, stderr: %s", 
+				rulesFile, err, stderr.String())
 		}
-		return vulnerabilities
+		return []Vulnerability{}
 	}
 
 	var semgrepOutput struct {
@@ -1044,12 +1282,12 @@ func (vd *VulnerabilityDetector) executeSemgrep(rulesFile, sourceFile, originalF
 		} `json:"results"`
 	}
 
-	err = json.Unmarshal(stdout.Bytes(), &semgrepOutput)
-	if err != nil {
-		logger.Error("Failed to parse Semgrep JSON output for rule file %s: %v, stdout: %s", rulesFile, err, stdout.String())
-		return vulnerabilities
+	if err := json.Unmarshal(stdout.Bytes(), &semgrepOutput); err != nil {
+		logger.Error("Failed to parse Semgrep JSON output for rule file %s: %v", rulesFile, err)
+		return []Vulnerability{}
 	}
 
+	var vulnerabilities []Vulnerability
 	for _, result := range semgrepOutput.Results {
 		location := fmt.Sprintf("%s:%d:%d", filepath.Base(originalFile), result.Start.Line, result.Start.Col)
 		hash := md5.Sum([]byte(fmt.Sprintf("%s:%s", result.RuleID, location)))
@@ -1131,36 +1369,24 @@ func (vd *VulnerabilityDetector) executeSemgrep(rulesFile, sourceFile, originalF
 }
 
 func (vd *VulnerabilityDetector) realtimeSemgrepScan(language, content, filePath string) []Vulnerability {
-	var vulnerabilities []Vulnerability
-	var mu sync.Mutex
-
 	if !vd.useSemgrepRegistry {
-		logger.Debug("Semgrep registry scan skipped for %s", language)
-		return vulnerabilities
+		return []Vulnerability{}
 	}
 
-	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "semgrep_registry_*")
 	if err != nil {
 		logger.Error("Failed to create temp directory: %v", err)
-		return vulnerabilities
+		return []Vulnerability{}
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Create source file
 	ext := vd.languageDetector.GetFileExtension(language)
 	sourceFile := filepath.Join(tmpDir, "source"+ext)
-	err = os.WriteFile(sourceFile, []byte(content), 0644)
-	if err != nil {
+	if err := os.WriteFile(sourceFile, []byte(content), 0644); err != nil {
 		logger.Error("Failed to create temp source file: %v", err)
-		return vulnerabilities
+		return []Vulnerability{}
 	}
 
-	// Log source file content
-	sourceContent, _ := os.ReadFile(sourceFile)
-	logger.Debug("Source file content for %s:\n%s", sourceFile, string(sourceContent))
-
-	// Define rulesets
 	var rulesets []string
 	switch language {
 	case "python":
@@ -1177,18 +1403,18 @@ func (vd *VulnerabilityDetector) realtimeSemgrepScan(language, content, filePath
 		rulesets = []string{"p/security-audit"}
 	}
 
-	// Create channels for ruleset processing
-	rulesetJobs := make(chan string, len(rulesets))
-	rulesetResults := make(chan []Vulnerability, len(rulesets))
-
-	// Start worker pool for Semgrep scans
+	var vulnerabilities []Vulnerability
+	var mu sync.Mutex
 	var wg sync.WaitGroup
-	numRuleWorkers := min(vd.maxWorkers, len(rulesets))
-	for i := 0; i < numRuleWorkers; i++ {
+
+	rulesetChan := make(chan string, len(rulesets))
+	resultChan := make(chan []Vulnerability, len(rulesets))
+
+	for i := 0; i < min(vd.maxWorkers, len(rulesets)); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for ruleset := range rulesetJobs {
+			for ruleset := range rulesetChan {
 				args := []string{
 					"semgrep",
 					"--config", ruleset,
@@ -1203,12 +1429,10 @@ func (vd *VulnerabilityDetector) realtimeSemgrepScan(language, content, filePath
 				cmd.Stdout = &stdout
 				cmd.Stderr = &stderr
 
-				logger.Debug("Executing Semgrep registry command: %s", strings.Join(args, " "))
-
-				err := cmd.Run()
-				if err != nil {
-					logger.Debug("Semgrep registry scan failed for %s: %v, stderr: %s", ruleset, err, stderr.String())
-					rulesetResults <- []Vulnerability{}
+				if err := cmd.Run(); err != nil {
+					logger.Debug("Semgrep registry scan failed for %s: %v, stderr: %s", 
+						ruleset, err, stderr.String())
+					resultChan <- []Vulnerability{}
 					continue
 				}
 
@@ -1235,10 +1459,9 @@ func (vd *VulnerabilityDetector) realtimeSemgrepScan(language, content, filePath
 					} `json:"results"`
 				}
 
-				err = json.Unmarshal(stdout.Bytes(), &semgrepOutput)
-				if err != nil {
-					logger.Error("Failed to parse Semgrep registry output for %s: %v, stdout: %s", ruleset, err, stdout.String())
-					rulesetResults <- []Vulnerability{}
+				if err := json.Unmarshal(stdout.Bytes(), &semgrepOutput); err != nil {
+					logger.Error("Failed to parse Semgrep registry output for %s: %v", ruleset, err)
+					resultChan <- []Vulnerability{}
 					continue
 				}
 
@@ -1320,27 +1543,24 @@ func (vd *VulnerabilityDetector) realtimeSemgrepScan(language, content, filePath
 
 					ruleVulns = append(ruleVulns, vulnerability)
 				}
-				rulesetResults <- ruleVulns
+				resultChan <- ruleVulns
 			}
 		}()
 	}
 
-	// Send rulesets to workers
 	go func() {
-		defer close(rulesetJobs)
 		for _, ruleset := range rulesets {
-			rulesetJobs <- ruleset
+			rulesetChan <- ruleset
 		}
+		close(rulesetChan)
 	}()
 
-	// Collect ruleset results
 	go func() {
 		wg.Wait()
-		close(rulesetResults)
+		close(resultChan)
 	}()
 
-	// Aggregate vulnerabilities
-	for ruleVulns := range rulesetResults {
+	for ruleVulns := range resultChan {
 		mu.Lock()
 		vulnerabilities = append(vulnerabilities, ruleVulns...)
 		mu.Unlock()
@@ -1350,74 +1570,143 @@ func (vd *VulnerabilityDetector) realtimeSemgrepScan(language, content, filePath
 }
 
 func (vd *VulnerabilityDetector) generateReport() map[string]interface{} {
-	severityOrder := map[string]int{
-		"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4,
-	}
+    severityOrder := map[string]int{
+        "CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4,
+    }
 
-	vd.mu.Lock()
-	sort.Slice(vd.vulnerabilities, func(i, j int) bool {
-		return severityOrder[vd.vulnerabilities[i].Severity] < severityOrder[vd.vulnerabilities[j].Severity]
-	})
-	vulnerabilities := make([]Vulnerability, len(vd.vulnerabilities))
-	copy(vulnerabilities, vd.vulnerabilities)
-	vd.mu.Unlock()
+    vd.mu.Lock()
+    sort.Slice(vd.vulnerabilities, func(i, j int) bool {
+        return severityOrder[vd.vulnerabilities[i].Severity] < severityOrder[vd.vulnerabilities[j].Severity]
+    })
+    vulnerabilities := make([]Vulnerability, len(vd.vulnerabilities))
+    copy(vulnerabilities, vd.vulnerabilities)
+    vd.mu.Unlock()
 
-	severityCounts := make(map[string]int)
-	categoryCounts := make(map[string]int)
-	for _, vuln := range vulnerabilities {
-		severityCounts[vuln.Severity]++
-		categoryCounts[vuln.Category]++
-	}
+    severityCounts := make(map[string]int)
+    categoryCounts := make(map[string]int)
+    for _, vuln := range vulnerabilities {
+        severityCounts[vuln.Severity]++
+        categoryCounts[vuln.Category]++
+    }
 
-	report := map[string]interface{}{
-		"scan_id": getStringConfig(vd.config, "scan_id", uuid.New().String()),
-		"timestamp":        time.Now().Format(time.RFC3339),
-		"source_directory": vd.sourceDir,
-		"statistics": map[string]interface{}{
-			"files_processed":      vd.stats.FilesProcessed,
-			"rules_loaded":         vd.stats.RulesLoaded,
-			"vulnerabilities_found": vd.stats.VulnerabilitiesFound,
-			"scan_start_time":      vd.stats.ScanStartTime.Format(time.RFC3339Nano),
-			"scan_end_time":        vd.stats.ScanEndTime.Format(time.RFC3339Nano),
-			"scan_duration":        int64(vd.stats.ScanDuration),
-		},
-		"summary": map[string]interface{}{
-			"total_vulnerabilities": len(vulnerabilities),
-			"severity_breakdown":    severityCounts,
-			"category_breakdown":    categoryCounts,
-		},
-		"vulnerabilities": vulnerabilities,
-		"metadata": map[string]interface{}{
-			"tool_version": "1.0.0",
-			"rules_used":   vd.stats.RulesLoaded,
-			"scan_config": map[string]interface{}{
-				"max_workers":          vd.maxWorkers,
-				"timeout":              vd.timeout,
-				"use_semgrep_registry": vd.useSemgrepRegistry,
-			},
-		},
-	}
+    // Get scan ID from config
+    scanID := getStringConfig(vd.config, "scan_id", uuid.New().String())
 
-	return report
+    report := map[string]interface{}{
+        "scan_id":            scanID,
+        "timestamp":          time.Now().Format(time.RFC3339),
+        "source_directory":   vd.sourceDir,
+        "statistics": map[string]interface{}{
+            "files_processed":        vd.stats.FilesProcessed,
+            "rules_loaded":          vd.stats.RulesLoaded,
+            "vulnerabilities_found":  vd.stats.VulnerabilitiesFound,
+            "scan_start_time":        vd.stats.ScanStartTime.Format(time.RFC3339Nano),
+            "scan_end_time":         vd.stats.ScanEndTime.Format(time.RFC3339Nano),
+            "scan_duration":          int64(vd.stats.ScanDuration),
+        },
+        "summary": map[string]interface{}{
+            "total_vulnerabilities": len(vulnerabilities),
+            "severity_breakdown":    severityCounts,
+            "category_breakdown":    categoryCounts,
+        },
+        "vulnerabilities": vulnerabilities,
+        "metadata": map[string]interface{}{
+            "tool_version": "1.0.0",
+            "rules_used":   vd.stats.RulesLoaded,
+            "scan_config": map[string]interface{}{
+                "max_workers":          vd.maxWorkers,
+                "timeout":             vd.timeout,
+                "use_semgrep_registry": vd.useSemgrepRegistry,
+            },
+        },
+    }
+
+    return report
+}
+
+func (vd *VulnerabilityDetector) saveReportSummary(report map[string]interface{}, summaryPath string) {
+    var summary strings.Builder
+    summary.WriteString("=== VULNERABILITY SCAN SUMMARY ===\n\n")
+
+    if timestamp, ok := report["timestamp"].(string); ok {
+        summary.WriteString(fmt.Sprintf("Scan Timestamp: %s\n", timestamp))
+    }
+
+    if sourceDir, ok := report["source_directory"].(string); ok {
+        summary.WriteString(fmt.Sprintf("Source Directory: %s\n", sourceDir))
+    }
+
+    summary.WriteString("\n")
+
+    if summaryData, ok := report["summary"].(map[string]interface{}); ok {
+        if total, ok := summaryData["total_vulnerabilities"].(int); ok {
+            summary.WriteString(fmt.Sprintf("Total Vulnerabilities: %d\n\n", total))
+        }
+
+        if severityBreakdown, ok := summaryData["severity_breakdown"].(map[string]int); ok {
+            summary.WriteString("Severity Breakdown:\n")
+            severities := []string{"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}
+            for _, severity := range severities {
+                if count, exists := severityBreakdown[severity]; exists && count > 0 {
+                    summary.WriteString(fmt.Sprintf("  %s: %d\n", severity, count))
+                }
+            }
+            summary.WriteString("\n")
+        }
+    }
+
+    summary.WriteString("=== DETAILED FINDINGS ===\n\n")
+
+    if vulnerabilities, ok := report["vulnerabilities"].([]Vulnerability); ok {
+        for i, vuln := range vulnerabilities {
+            summary.WriteString(fmt.Sprintf("%d. [%s] %s\n", i+1, vuln.Severity, vuln.RuleID))
+            summary.WriteString(fmt.Sprintf("   Location: %s\n", vuln.Location))
+            summary.WriteString(fmt.Sprintf("   Details: %s\n", vuln.Details))
+            if vuln.CWEIDependency != "" {
+                summary.WriteString(fmt.Sprintf("   CWE: %s\n", vuln.CWEIDependency))
+            }
+            if vuln.OWASPDependency != "" {
+                summary.WriteString(fmt.Sprintf("   OWASP: %s\n", vuln.OWASPDependency))
+            }
+            summary.WriteString(fmt.Sprintf("   Remediation: %s\n", vuln.Remediation))
+            summary.WriteString("\n")
+        }
+    }
+
+    err := os.WriteFile(summaryPath, []byte(summary.String()), 0644)
+    if err != nil {
+        logger.Error("Failed to save summary report: %v", err)
+    } else {
+        logger.Info("Summary report saved to %s", summaryPath)
+    }
 }
 
 func (vd *VulnerabilityDetector) saveReport(report map[string]interface{}) {
-    // Save JSON report to file
-    outputDir := filepath.Dir(vd.outputPath)
-    if err := os.MkdirAll(outputDir, 0755); err != nil {
-        logger.Error("Failed to create output directory %s: %v", outputDir, err)
+    // Get scan ID from config
+    scanID := getStringConfig(vd.config, "scan_id", uuid.New().String())
+    
+    // Create reports directory if it doesn't exist
+    reportsDir := "./reports"
+    if err := os.MkdirAll(reportsDir, 0755); err != nil {
+        logger.Error("Failed to create reports directory %s: %v", reportsDir, err)
         return
     }
+
+    // Generate report paths inside the reports directory
+    reportPath := filepath.Join(reportsDir, fmt.Sprintf("%s.json", scanID))
+
+    // Save JSON report
     reportJSON, err := json.MarshalIndent(report, "", "  ")
     if err != nil {
         logger.Error("Failed to marshal report to JSON: %v", err)
         return
     }
-    if err = os.WriteFile(vd.outputPath, reportJSON, 0644); err != nil {
-        logger.Error("Failed to save JSON report to %s: %v", vd.outputPath, err)
+    
+    if err = os.WriteFile(reportPath, reportJSON, 0644); err != nil {
+        logger.Error("Failed to save JSON report to %s: %v", reportPath, err)
         return
     }
-    logger.Info("JSON report saved to %s", vd.outputPath)
+    logger.Info("JSON report saved to %s", reportPath)
 
     // Initialize database connection
     db, err := NewDB(filepath.Dir(vd.outputPath))
@@ -1427,85 +1716,43 @@ func (vd *VulnerabilityDetector) saveReport(report map[string]interface{}) {
     }
     defer db.Close()
 
-    // Get scan ID from report or config
-    scanID := getStringConfig(vd.config, "scan_id", uuid.New().String())
-
-    // Insert scan data with simplified schema
+    // Insert scan data with all required fields
     _, err = db.conn.Exec(`
         INSERT INTO scans (
-            scanId, filesProcessed, vulnerabilitiesFound, duration
-        ) VALUES (?, ?, ?, ?)`,
+            scanId, source_directory, filesProcessed, 
+            vulnerabilitiesFound, duration, timestamp
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
         scanID,
+        vd.sourceDir, // source_directory
         vd.stats.FilesProcessed,
         vd.stats.VulnerabilitiesFound,
         int64(vd.stats.ScanDuration),
+        time.Now().Format(time.RFC3339), // timestamp
     )
     if err != nil {
         logger.Error("Failed to insert scan data for scan ID %s: %v", scanID, err)
         return
     }
 
+	// Update directory history
+_, err = db.conn.Exec(`
+    INSERT INTO directory_history (
+        directory, first_scan, last_scan, scan_count
+    ) VALUES (?, ?, ?, 1)
+    ON CONFLICT(directory) DO UPDATE SET
+        last_scan = excluded.last_scan,
+        scan_count = scan_count + 1`, 
+    vd.sourceDir, // directory
+    time.Now().Format(time.RFC3339), // first_scan (for new entries)
+    time.Now().Format(time.RFC3339), // last_scan
+	)
+	if err != nil {
+    	logger.Error("Failed to update directory history: %v", err)
+	}
+
     logger.Info("Report saved to database with scan ID: %s", scanID)
 }
 
-func (vd *VulnerabilityDetector) saveReportSummary(report map[string]interface{}, summaryPath string) {
-	var summary strings.Builder
-	summary.WriteString("=== VULNERABILITY SCAN SUMMARY ===\n\n")
-
-	if timestamp, ok := report["timestamp"].(string); ok {
-		summary.WriteString(fmt.Sprintf("Scan Timestamp: %s\n", timestamp))
-	}
-
-	if sourceDir, ok := report["source_directory"].(string); ok {
-		summary.WriteString(fmt.Sprintf("Source Directory: %s", sourceDir))
-	}
-
-	summary.WriteString("\n")
-
-	if summaryData, ok := report["summary"].(map[string]interface{}); ok {
-		if total, ok := summaryData["total_vulnerabilities"].(int); ok {
-			summary.WriteString(fmt.Sprintf("Total Vulnerabilities: %d\n\n", total))
-		}
-
-		if severityBreakdown, ok := summaryData["severity"].(map[string]int); ok {
-			summary.WriteString("Severity Breakdown:\n")
-			severities := []string{"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}
-			for _, severity := range severities {
-				if count, exists := severityBreakdown[severity]; exists && count > 0 {
-					summary.WriteString(fmt.Sprintf("  %s: %d\n", severity, count))
-				}
-			}
-			summary.WriteString("\n")
-		}
-	}
-
-	summary.WriteString("=== DETAILED FINDINGS ===\n\n")
-
-	if vulnerabilities, ok := report["vulnerabilities"].([]Vulnerability); ok {
-		for i, vuln := range vulnerabilities {
-			summary.WriteString(fmt.Sprintf("%d. [%s] %s\n", i+1, vuln.Severity, vuln.RuleID))
-			summary.WriteString(fmt.Sprintf("   Location: %s\n", vuln.Location))
-			summary.WriteString(fmt.Sprintf("   Details: %s\n", vuln.Details))
-			if vuln.CWEIDependency != "" {
-				summary.WriteString(fmt.Sprintf("   CWE: %s\n", vuln.CWEIDependency))
-			}
-			if vuln.OWASPDependency != "" {
-				summary.WriteString(fmt.Sprintf("   OWASP: %s\n", vuln.OWASPDependency))
-			}
-			summary.WriteString(fmt.Sprintf("   Remediation: %s\n", vuln.Remediation))
-			summary.WriteString("\n")
-		}
-	}
-
-	err := os.WriteFile(summaryPath, []byte(summary.String()), 0644)
-	if err != nil {
-		logger.Error("Failed to save summary report: %v", err.Error())
-	} else {
-		logger.Info("Summary report saved to %s", summaryPath)
-	}
-}
-
-// Utility functions
 func getStringConfig(config map[string]interface{}, key, defaultValue string) string {
 	if value, ok := config[key].(string); ok {
 		return value
@@ -1544,7 +1791,6 @@ func min(a, b int) int {
 	return b
 }
 
-// Main function and CLI
 func main() {
 	var (
 		sourceDir          = flag.String("source", ".", "Source code directory to scan")
@@ -1553,13 +1799,12 @@ func main() {
 		maxWorkers         = flag.Int("workers", runtime.NumCPU(), "Maximum number of worker goroutines")
 		timeout            = flag.Int("timeout", 300, "Timeout for individual scans in seconds")
 		useSemgrepRegistry = flag.Bool("semgrep-registry", false, "Use Semgrep registry rules")
-		verbose            = flag.Bool("verbose", true, "Enable verbose logging")
+		verbose            = flag.Bool("verbose", false, "Enable verbose logging")
 		configFile         = flag.String("config", "", "Configuration file path")
-		scanId             = flag.String("scan_id", uuid.New().String(), "Unique identifier for the scan") // Added scan_id flag
+		scanId             = flag.String("scan_id", uuid.New().String(), "Unique identifier for the scan")
 	)
 	flag.Parse()
 
-	// Initialize logger
 	logger = NewLogger(*verbose)
 
 	logger.Info("=== Starting Vulnerability Scanner ===")
@@ -1569,7 +1814,6 @@ func main() {
 	logger.Info("Maximum workers: %d", *maxWorkers)
 	logger.Info("Scan ID: %s", *scanId)
 
-	// Load configuration
 	config := map[string]interface{}{
 		"source_dir":           *sourceDir,
 		"rules_dir":           *rulesDir,
@@ -1578,17 +1822,15 @@ func main() {
 		"timeout":             *timeout,
 		"use_semgrep_registry": *useSemgrepRegistry,
 		"verbose":             *verbose,
-		"scan_id":             *scanId, // Include scan_id in config
+		"scan_id":             *scanId,
 	}
 
-	// Load config file if provided
 	if *configFile != "" {
 		fileConfig, err := loadConfigFile(*configFile)
 		if err != nil {
 			logger.Error("Failed to load config file: %s", err)
 			os.Exit(1)
 		}
-		// Merge file config with CLI args (CLI takes precedence)
 		for key, value := range fileConfig {
 			if _, exists := config[key]; !exists {
 				config[key] = value
@@ -1596,17 +1838,13 @@ func main() {
 		}
 	}
 
-	// Create detector
 	detector := NewVulnerabilityDetector(config)
-
-	// Run scan
 	report, err := detector.ScanCodebase()
 	if err != nil {
 		logger.Critical("Scan failed: %v", err.Error())
 		os.Exit(1)
 	}
 
-	// Print summary
 	if summary, ok := report["summary"].(map[string]interface{}); ok {
 		if total, ok := summary["total_vulnerabilities"].(int); ok {
 			logger.Info("Scan completed. Found %d vulnerabilities", total)
@@ -1621,7 +1859,7 @@ func main() {
 	}
 
 	if stats, ok := report["statistics"].(map[string]interface{}); ok {
-		if filesProcessed, ok := stats["files_processed"].(int); ok { // Fixed: Corrected key from "files" to "files_processed"
+		if filesProcessed, ok := stats["files_processed"].(int); ok {
 			logger.Info("Files processed: %d", filesProcessed)
 		}
 		if rulesLoaded, ok := stats["rules_loaded"].(int); ok {

@@ -1,0 +1,36 @@
+rules:
+  - id: py-sql-injection
+    category: Security
+    type: regex
+    pattern: '(execute|cursor\.execute|query)\s*\(\s*["\'].*%.*["\']'
+    severity: HIGH
+    message: Potential SQL injection vulnerability
+    fix: Use parameterized queries with ? placeholders
+    cwe: CWE-89
+    owasp: A03:2021
+    confidence: HIGH
+    tags: [sql-injection, security]
+    
+  - id: py-command-injection
+    category: Security
+    type: regex
+    pattern: '(os\.system|subprocess\.call|subprocess\.run|os\.popen)\s*\([^)]*\+'
+    severity: HIGH
+    message: Potential command injection vulnerability
+    fix: Use subprocess with shell=False and validate inputs
+    cwe: CWE-78
+    owasp: A03:2021
+    confidence: HIGH
+    tags: [command-injection, security]
+    
+  - id: py-hardcoded-secrets
+    category: Security
+    type: regex
+    pattern: '(password|secret|key|token)\s*=\s*["\'][^"\']{8,}["\']'
+    severity: MEDIUM
+    message: Potential hardcoded secret detected
+    fix: Use environment variables or secure configuration
+    cwe: CWE-798
+    owasp: A02:2021
+    confidence: MEDIUM
+    tags: [secrets, hardcoded-credentials]

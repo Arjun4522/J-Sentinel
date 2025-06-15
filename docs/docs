@@ -7,9 +7,6 @@ mkdir -p /tmp/j-sentinel/uploads /tmp/j-sentinel/outputs
 
 chmod -R 777 /tmp/j-sentinel
 
-./mvnw spring-boot:run
-
-
 javac -cp "lib/*" scanner.java 
 javac -cp "lib/*" analysis.java
 javac -cp "lib/* cfg_extract.java
@@ -56,7 +53,17 @@ make
 ./cpp_scanner ../test_code.cpp --local --output=../../output/codegraph_cpp.json --
 
 ./cpp_scanner ../test_code.cpp --
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+Spring API Gateway
+-------------------
+
+./mvnw spring-boot:run
+
+DB
+----
+go run initdb.go db_setup.go
+sqlite3 reports/data.db
 
 Rule-engine
 ------------
@@ -78,11 +85,11 @@ curl -u user:secret -X POST http://localhost:8080/api/scan/trigger \
   "useSemgrep": false
 }'
 
-
+------
 curl -u user:secret http://localhost:8080/api/scan/status/2a96d0e7-c8d2-4efd-8526-a552fb46f421
 
 curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/report
-
+-------
 
 Tracking
 ---------
@@ -90,3 +97,21 @@ Tracking
 curl -u user:secret http://localhost:8080/api/scans
 
 curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/metadata
+
+curl -u user:secret http://localhost:8080/api/scans/2a96d0e7-c8d2-4efd-8526-a552fb46f421/report
+
+History
+---------
+# 1. Get all scan history (with basic auth)
+curl -u user:secret -X GET http://localhost:8080/api/history/scans
+
+# 2. Get specific directory history (URL encoded path)
+curl -u user:secret -X GET "http://localhost:8080/api/history/directory/%2Fprojects%2Fmyapp"
+
+# 3. Alternative with jq for pretty-printed JSON
+curl -s -u user:secret http://localhost:8080/api/history/scans | jq
+
+# 4. With verbose output to debug
+curl -v -u user:secret -X GET http://localhost:8080/api/history/scans
+
+

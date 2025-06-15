@@ -37,16 +37,31 @@ func NewDB(dataDir string) (*DB, error) {
 
 // initSchema creates the database tables if they don't exist
 func (db *DB) initSchema() error {
-	// Create scans table with simplified schema
+	// Create scans table with updated schema
 	_, err := db.conn.Exec(`
 	CREATE TABLE IF NOT EXISTS scans (
 		scanId TEXT PRIMARY KEY,
+		source_directory TEXT NOT NULL,
 		filesProcessed INTEGER NOT NULL,
 		vulnerabilitiesFound INTEGER NOT NULL,
-		duration INTEGER NOT NULL
+		duration INTEGER NOT NULL,
+		timestamp TEXT NOT NULL
 	)`)
 	if err != nil {
 		return fmt.Errorf("failed to create scans table: %w", err)
+	}
+
+	// Create directory_history table
+	_, err = db.conn.Exec(`
+	CREATE TABLE IF NOT EXISTS directory_history (
+		directory TEXT NOT NULL,
+		first_scan TEXT NOT NULL,
+		last_scan TEXT NOT NULL,
+		scan_count INTEGER NOT NULL DEFAULT 1,
+		PRIMARY KEY (directory)
+	)`)
+	if err != nil {
+		return fmt.Errorf("failed to create directory_history table: %w", err)
 	}
 
 	return nil
