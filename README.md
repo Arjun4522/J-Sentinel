@@ -443,4 +443,3 @@ For detailed contributing guidelines, please see our [CONTRIBUTING.md](CONTRIBUT
 
 ---
 
-**J-Sentinel** - Securing code, one scan at a time 🛡️
