@@ -416,5 +416,3 @@ We welcome contributions to J-Sentinel! Please follow these guidelines:
 For detailed contributing guidelines, please see our [CONTRIBUTING.md](CONTRIBUTING.md) file.
 
 ---
-
-**J-Sentinel** - Securing code, one scan at a time 🛡️
