@@ -1,0 +1,19 @@
+rules:
+    - category: Security
+      cwe: CWE-89
+      fix: Use parameterized queries
+      id: py-sql-injection
+      message: Potential SQL injection vulnerability
+      owasp: A03:2021
+      pattern: (execute|cursor\.execute|query)\s*\(\s*["'].*%.*["']
+      severity: HIGH
+      type: regex
+    - category: Security
+      cwe: CWE-78
+      fix: Use subprocess with shell=False and validate inputs
+      id: py-command-injection
+      message: Potential command injection vulnerability
+      owasp: A03:2021
+      pattern: (os\.system|subprocess\.call|subprocess\.run|os\.popen)\s*\([^)]*\+
+      severity: HIGH
+      type: regex

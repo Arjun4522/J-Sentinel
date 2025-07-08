@@ -69,4 +69,10 @@ curl -s -u user:secret http://localhost:8080/api/history/scans | jq
 # 4. With verbose output to debug
 curl -v -u user:secret -X GET http://localhost:8080/api/history/scans
 
+Frontend
+----------
+
+npm install
+
+npm start
 
