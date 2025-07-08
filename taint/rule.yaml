@@ -1,0 +1,23 @@
+sources:
+  - types: ["PARAMETER", "METHOD_CALL"]
+    names: ["getParameter", "gets", "scanf", "readLine"]
+    label: "UNSAFE_INPUT"
+
+sinks:
+  - types: ["METHOD_CALL"]
+    names: ["executeQuery", "query"]
+    vulnerability: "SQL_INJECTION"
+    severity: "critical"
+  
+  - types: ["METHOD_CALL"]
+    names: ["exec", "system", "popen"]
+    vulnerability: "COMMAND_INJECTION"
+  
+  - types: ["METHOD_CALL"]
+    names: ["strcpy", "gets", "strcat"]
+    vulnerability: "BUFFER_OVERFLOW"
+
+sanitizers:
+  - "encodeURI"
+  - "prepareStatement"
+  - "htmlspecialchars"

@@ -11,7 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/history")
-@CrossOrigin
+
 public class ScanHistoryController {
 
     private final ScanHistoryService scanHistoryService;

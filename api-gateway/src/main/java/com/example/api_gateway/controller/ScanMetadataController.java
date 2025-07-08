@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/scans")
-@CrossOrigin // Optional: for frontend access
+
 public class ScanMetadataController {
 
     private final ScanMetadataStore metadataStore;
