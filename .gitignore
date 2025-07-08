@@ -39,3 +39,4 @@ jsentinel.sh
 .jsentinel_scanid
 
 joern/
+taint/env
