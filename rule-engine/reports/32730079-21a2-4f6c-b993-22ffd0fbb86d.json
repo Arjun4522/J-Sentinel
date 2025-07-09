@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "rules_used": 384,
+    "scan_config": {
+      "max_workers": 2,
+      "timeout": 300,
+      "use_semgrep_registry": false
+    },
+    "tool_version": "1.0.0"
+  },
+  "scan_id": "32730079-21a2-4f6c-b993-22ffd0fbb86d",
+  "source_directory": "/home/arunava/J-Sentinel/test/VulnerableServer",
+  "statistics": {
+    "files_processed": 3,
+    "rules_loaded": 384,
+    "scan_duration": 9313380250,
+    "scan_end_time": "2025-07-08T19:55:03.014192216Z",
+    "scan_start_time": "2025-07-08T19:54:53.700811974Z",
+    "vulnerabilities_found": 2
+  },
+  "summary": {
+    "category_breakdown": {
+      "Security": 2
+    },
+    "severity_breakdown": {
+      "HIGH": 1,
+      "MEDIUM": 1
+    },
+    "total_vulnerabilities": 2
+  },
+  "timestamp": "2025-07-08T19:55:03Z",
+  "vulnerabilities": [
+    {
+      "rule_id": "rules.java.lang.security.audit.formatted-sql-string",
+      "category": "Security",
+      "severity": "HIGH",
+      "location": "DBHandler.java:24:24",
+      "details": "Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arunava/J-Sentinel/test/VulnerableServer/src/main/java/com/test/DBHandler.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "MEDIUM",
+      "dependency_file": "5f49b6e422dad2e7123b472f3031ccdd",
+      "line_number": 24,
+      "column_number": 24,
+      "code_snippet": "requires login"
+    },
+    {
+      "rule_id": "rules.java.lang.security.audit.sqli.jdbc-sqli",
+      "category": "Security",
+      "severity": "MEDIUM",
+      "location": "DBHandler.java:24:24",
+      "details": "Detected a formatted string in a SQL statement. This could lead to SQL injection if variables in the SQL statement are not properly sanitized. Use a prepared statements (java.sql.PreparedStatement) instead. You can obtain a PreparedStatement using 'connection.prepareStatement'.",
+      "remediation": "Follow Semgrep recommendations",
+      "context": {
+        "batch": true,
+        "file_path": "/home/arunava/J-Sentinel/test/VulnerableServer/src/main/java/com/test/DBHandler.java",
+        "lines": "requires login",
+        "semgrep": true
+      },
+      "cwe_id": "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "confidence": "LOW",
+      "dependency_file": "0b1e50b4ab5211050acfab1cf3b5eabe",
+      "line_number": 24,
+      "column_number": 24,
+      "code_snippet": "requires login"
+    }
+  ]
+}

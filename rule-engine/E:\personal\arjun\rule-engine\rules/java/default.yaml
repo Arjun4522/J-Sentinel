@@ -1,0 +1,19 @@
+rules:
+    - category: Security
+      cwe: CWE-89
+      fix: Use PreparedStatement with parameter binding
+      id: java-sql-injection
+      message: Potential SQL injection vulnerability
+      owasp: A03:2021
+      pattern: (executeQuery|executeUpdate|execute)\s*\(\s*["'].*\+
+      severity: HIGH
+      type: regex
+    - category: Security
+      cwe: CWE-532
+      fix: Use a logging framework like SLF4J
+      id: java-println
+      message: Avoid using System.out.println in production code
+      owasp: A09:2021
+      pattern: System.out.println(...)
+      severity: LOW
+      type: semgrep

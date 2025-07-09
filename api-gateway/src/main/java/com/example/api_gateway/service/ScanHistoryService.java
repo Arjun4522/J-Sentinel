@@ -11,7 +11,7 @@ import java.util.Map;
 
 @Service
 public class ScanHistoryService {
-    private static final String DB_URL = "jdbc:sqlite:/home/arjun/Desktop/J-Sentinel/rule-engine/reports/data.db";
+    private static final String DB_URL = "jdbc:sqlite:/home/arunava/J-Sentinel/rule-engine/reports/data.db";
 
     public Mono<List<Map<String, Object>>> getAllScanHistory() {
         return Mono.fromCallable(() -> {
