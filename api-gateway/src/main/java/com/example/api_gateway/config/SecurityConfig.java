@@ -39,7 +39,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         
         // Allow specific origins
-        config.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        config.setAllowedOriginPatterns(Arrays.asList("http://localhost:5173"));
         
         // Allow all headers
         config.setAllowedHeaders(Arrays.asList("*"));
