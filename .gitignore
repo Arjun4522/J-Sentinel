@@ -42,3 +42,11 @@ joern/
 taint/env
 
 output/
+
+rules/
+
+cpp-parser/
+
+graph.py
+
+java-parser/
