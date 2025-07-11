@@ -43,10 +43,10 @@ taint/env
 
 output/
 
-rules/
-
 cpp-parser/
 
 graph.py
 
 java-parser/
+
+bak-react-app/
