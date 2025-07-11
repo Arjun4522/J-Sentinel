@@ -65,4 +65,12 @@ public class ProjectService {
                 .map(Scan::getScanId)
                 .toList();
     }
+
+    public void deleteProject(String projectId) {
+        if (!projectRepository.existsById(projectId)) {
+            throw new RuntimeException("Project not found");
+        }
+        projectRepository.deleteById(projectId);
+    }
+
 }
