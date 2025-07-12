@@ -1,8 +1,9 @@
-// ScanHistoryService.java
 package com.example.api_gateway.service;
 
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,14 +12,20 @@ import java.util.Map;
 
 @Service
 public class ScanHistoryService {
-    private static final String DB_URL = "jdbc:sqlite:/home/arjun/J-Sentinel/rule-engine/reports/data.db";
+    private final String dbUrl;
 
+    @Autowired
+    public ScanHistoryService(@Value("${JSENTINEL_HISTORY_DB_PATH:./reports/data.db}") String dbPath) {
+        this.dbUrl = "jdbc:sqlite:" + dbPath;
+        System.out.println("Database path: " + dbUrl);
+    }
+    
     public Mono<List<Map<String, Object>>> getAllScanHistory() {
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> scans = new ArrayList<>();
-            System.out.println("Attempting to connect to: " + DB_URL); // Add logging
+            System.out.println("Attempting to connect to: " + dbUrl); // Add logging
             
-            try (Connection conn = DriverManager.getConnection(DB_URL);
+            try (Connection conn = DriverManager.getConnection(dbUrl);
                  Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery("SELECT * FROM scans ORDER BY timestamp DESC")) {
                 
@@ -47,7 +54,7 @@ public class ScanHistoryService {
 
     public Mono<Map<String, Object>> getDirectoryHistory(String directory) {
         return Mono.fromCallable(() -> {
-            try (Connection conn = DriverManager.getConnection(DB_URL);
+            try (Connection conn = DriverManager.getConnection(dbUrl);
                  PreparedStatement stmt = conn.prepareStatement(
                      "SELECT * FROM directory_history WHERE directory = ?")) {
                 

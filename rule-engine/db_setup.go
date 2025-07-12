@@ -37,60 +37,38 @@ func NewDB(dataDir string) (*DB, error) {
 
 // initSchema creates the database tables if they don't exist
 func (db *DB) initSchema() error {
-	// Create projects table
-    _, err := db.conn.Exec(`
-    CREATE TABLE IF NOT EXISTS projects (
-        projectId TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        createdAt TEXT NOT NULL
-    )`)
-    if err != nil {
-        return fmt.Errorf("failed to create projects table: %w", err)
-    }
-
-    // Update scans table to include projectId foreign key
-    _, err = db.conn.Exec(`
-    CREATE TABLE IF NOT EXISTS scans (
-        scanId TEXT PRIMARY KEY,
-        projectId TEXT NOT NULL,
-        source_directory TEXT NOT NULL,
-        filesProcessed INTEGER NOT NULL,
-        vulnerabilitiesFound INTEGER NOT NULL,
-        duration INTEGER NOT NULL,
-        timestamp TEXT NOT NULL,
-        FOREIGN KEY(projectId) REFERENCES projects(projectId)
-    )`)
-    if err != nil {
-        return fmt.Errorf("failed to create scans table: %w", err)
-    }
-
-
-	// Create scans table with updated schema
+	// Create projects table (matches the Project entity)
 	_, err := db.conn.Exec(`
-	CREATE TABLE IF NOT EXISTS scans (
-		scanId TEXT PRIMARY KEY,
-		source_directory TEXT NOT NULL,
-		filesProcessed INTEGER NOT NULL,
-		vulnerabilitiesFound INTEGER NOT NULL,
-		duration INTEGER NOT NULL,
-		timestamp TEXT NOT NULL
-	)`)
+    CREATE TABLE IF NOT EXISTS projects (
+        project_id TEXT PRIMARY KEY,
+        name TEXT,
+        created_at INTEGER NOT NULL,
+        scan_count INTEGER NOT NULL DEFAULT 0
+    )`)
+	if err != nil {
+		return fmt.Errorf("failed to create projects table: %w", err)
+	}
+
+	// Create scans table (matches the Scan entity)
+	_, err = db.conn.Exec(`
+    CREATE TABLE IF NOT EXISTS project_scans (
+        scan_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        FOREIGN KEY(project_id) REFERENCES projects(project_id)
+    )`)
 	if err != nil {
 		return fmt.Errorf("failed to create scans table: %w", err)
 	}
 
-	// Create directory_history table
-	_, err = db.conn.Exec(`
-	CREATE TABLE IF NOT EXISTS directory_history (
-		directory TEXT NOT NULL,
-		first_scan TEXT NOT NULL,
-		last_scan TEXT NOT NULL,
-		scan_count INTEGER NOT NULL DEFAULT 1,
-		PRIMARY KEY (directory)
-	)`)
+	// Drop the unused tables that don't match your Java entities
+	_, err = db.conn.Exec(`DROP TABLE IF EXISTS scans`)
 	if err != nil {
-		return fmt.Errorf("failed to create directory_history table: %w", err)
+		return fmt.Errorf("failed to drop old scans table: %w", err)
+	}
+
+	_, err = db.conn.Exec(`DROP TABLE IF EXISTS directory_history`)
+	if err != nil {
+		return fmt.Errorf("failed to drop directory_history table: %w", err)
 	}
 
 	return nil

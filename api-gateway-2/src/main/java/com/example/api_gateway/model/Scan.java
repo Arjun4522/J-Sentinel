@@ -6,7 +6,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "scans")
+@Table(name = "project_scans")
 public class Scan {
     @Id
     private String scanId;

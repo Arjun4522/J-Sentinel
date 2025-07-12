@@ -8,4 +8,7 @@ import java.util.List;
 @Repository
 public interface ScanRepository extends JpaRepository<Scan, String> {
     List<Scan> findByProject_ProjectId(String projectId);
+    void deleteById(String scanId);
+
 }
+

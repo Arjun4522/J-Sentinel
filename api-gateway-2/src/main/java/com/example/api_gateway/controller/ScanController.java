@@ -1,38 +1,34 @@
 package com.example.api_gateway.controller;
 
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.example.api_gateway.repository.ScanRepository;
 import com.example.api_gateway.service.TrackedVulnerabilityScanService;
-
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/scans")
 public class ScanController {
 
-    @Autowired
-    private TrackedVulnerabilityScanService scanService;
+    private final TrackedVulnerabilityScanService scanService;
 
-    @Autowired
-    private ScanRepository scanRepository;
+    public ScanController(TrackedVulnerabilityScanService scanService) {
+        this.scanService = scanService;
+    }
 
     @PostMapping
     public Mono<Map<String, Object>> triggerScan(@RequestBody Map<String, Object> config) {
         return scanService.triggerScan(config);
     }
 
-    // 🆕 Delete scan by ID
     @DeleteMapping("/{scanId}")
-    public void deleteScan(@PathVariable String scanId) {
-        scanRepository.deleteById(scanId);
+    public Mono<ResponseEntity<Void>> deleteScan(@PathVariable String scanId) {
+        return scanService.deleteScan(scanId)
+                .then(Mono.defer(() -> Mono.just(ResponseEntity.noContent().<Void>build())))
+                .onErrorResume(e -> Mono.just(
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).<Void>build()
+                ));
     }
 }
