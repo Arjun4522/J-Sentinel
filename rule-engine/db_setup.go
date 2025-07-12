@@ -37,6 +37,35 @@ func NewDB(dataDir string) (*DB, error) {
 
 // initSchema creates the database tables if they don't exist
 func (db *DB) initSchema() error {
+	// Create projects table
+    _, err := db.conn.Exec(`
+    CREATE TABLE IF NOT EXISTS projects (
+        projectId TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        createdAt TEXT NOT NULL
+    )`)
+    if err != nil {
+        return fmt.Errorf("failed to create projects table: %w", err)
+    }
+
+    // Update scans table to include projectId foreign key
+    _, err = db.conn.Exec(`
+    CREATE TABLE IF NOT EXISTS scans (
+        scanId TEXT PRIMARY KEY,
+        projectId TEXT NOT NULL,
+        source_directory TEXT NOT NULL,
+        filesProcessed INTEGER NOT NULL,
+        vulnerabilitiesFound INTEGER NOT NULL,
+        duration INTEGER NOT NULL,
+        timestamp TEXT NOT NULL,
+        FOREIGN KEY(projectId) REFERENCES projects(projectId)
+    )`)
+    if err != nil {
+        return fmt.Errorf("failed to create scans table: %w", err)
+    }
+
+
 	// Create scans table with updated schema
 	_, err := db.conn.Exec(`
 	CREATE TABLE IF NOT EXISTS scans (

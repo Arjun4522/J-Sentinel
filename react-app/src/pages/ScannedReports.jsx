@@ -261,7 +261,7 @@ const ReportItem = ({ report, getStatusIcon, getSeverityIcon, getSeverityColor }
   // Mock data - replace with actual report data
   const mockReport = {
     scanId: report.scanId || Math.floor(Math.random() * 1000),
-    projectName: report.projectName || 'Sample Project',
+    projectName: report.projectName || 'Project',
     status: report.status || 'completed',
     severity: report.severity || 'medium',
     issuesFound: report.issuesFound || Math.floor(Math.random() * 20),

@@ -163,19 +163,6 @@ const ProjectCard = ({ project, onDelete, onStartScan }) => {
         <span>Created {new Date(project.createdAt || Date.now()).toLocaleDateString()}</span>
       </div>
 
-      {/* File Upload */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Upload scan file
-        </label>
-        <input
-          key={fileInputKey}
-          type="file"
-          onChange={handleFileUpload}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-        />
-      </div>
-
       {/* Actions */}
       <div className="flex items-center justify-between">
         <Link

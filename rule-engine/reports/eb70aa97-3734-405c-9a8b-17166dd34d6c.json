@@ -8,14 +8,14 @@
     },
     "tool_version": "1.0.0"
   },
-  "scan_id": "d52d6e2a-e9e3-476d-9cd8-83c07c193ebf",
+  "scan_id": "eb70aa97-3734-405c-9a8b-17166dd34d6c",
   "source_directory": "/home/arjun/Desktop/J-Sentinel/test",
   "statistics": {
     "files_processed": 3,
     "rules_loaded": 522,
-    "scan_duration": 12831382344,
-    "scan_end_time": "2025-07-08T23:15:06.743542047+05:30",
-    "scan_start_time": "2025-07-08T23:14:53.912159697+05:30",
+    "scan_duration": 12444575026,
+    "scan_end_time": "2025-07-12T04:07:57.572364164+05:30",
+    "scan_start_time": "2025-07-12T04:07:45.127789129+05:30",
     "vulnerabilities_found": 28
   },
   "summary": {
@@ -28,7 +28,7 @@
     },
     "total_vulnerabilities": 28
   },
-  "timestamp": "2025-07-08T23:15:06+05:30",
+  "timestamp": "2025-07-12T04:07:57+05:30",
   "vulnerabilities": [
     {
       "rule_id": "rules.java.lang.security.audit.formatted-sql-string",

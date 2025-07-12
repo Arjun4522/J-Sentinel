@@ -16,33 +16,52 @@ import {
   TrashIcon
 } from "@heroicons/react/24/outline";
 
+// Configure axios instance with base URL and auth
+const api = axios.create({
+  baseURL: "http://localhost:8080/api",
+  auth: {
+    username: 'user',
+    password: 'secret'
+  }
+});
+
 function ProjectDetails() {
   const { id: projectId } = useParams();
   const [project, setProject] = useState(null);
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showScanModal, setShowScanModal] = useState(false);
 
   useEffect(() => {
-    fetchProjectDetails();
-    fetchScans();
+    const fetchData = async () => {
+      try {
+        await Promise.all([fetchProjectDetails(), fetchScans()]);
+      } catch (err) {
+        setError("Failed to load project data");
+        console.error(err);
+      }
+    };
+    fetchData();
   }, [projectId]);
 
   const fetchProjectDetails = async () => {
     try {
-      const res = await axios.get(`/api/projects/${projectId}`);
+      const res = await api.get(`/projects/${projectId}`);
       setProject(res.data);
     } catch (error) {
       console.error("Failed to fetch project details:", error);
+      throw error;
     }
   };
 
   const fetchScans = async () => {
     try {
-      const res = await axios.get(`/api/scans/project/${projectId}`);
+      const res = await api.get(`/projects/${projectId}/scans`);
       setScans(res.data || []);
     } catch (error) {
       console.error("Failed to fetch scans:", error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -51,11 +70,22 @@ function ProjectDetails() {
   const handleDeleteScan = async (scanId) => {
     if (window.confirm("Are you sure you want to delete this scan?")) {
       try {
-        await axios.delete(`/api/scans/${scanId}`);
-        fetchScans();
+        await api.delete(`/scans/${scanId}`);
+        await Promise.all([fetchProjectDetails(), fetchScans()]);
       } catch (error) {
         console.error("Failed to delete scan:", error);
+        setError("Failed to delete scan");
       }
+    }
+  };
+
+  const handleScanTriggered = async () => {
+    setShowScanModal(false);
+    try {
+      await Promise.all([fetchProjectDetails(), fetchScans()]);
+    } catch (error) {
+      console.error("Failed to refresh after scan:", error);
+      setError("Failed to refresh data");
     }
   };
 
@@ -89,6 +119,20 @@ function ProjectDetails() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-100 text-red-700 rounded-lg">
+        {error}
+        <button 
+          onClick={() => window.location.reload()} 
+          className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -127,7 +171,9 @@ function ProjectDetails() {
             <FolderIcon className="w-8 h-8 text-blue-600" />
             <div>
               <p className="text-sm text-gray-600">Total Scans</p>
-              <p className="text-2xl font-bold text-gray-900">{scans.length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {project?.scanCount || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -158,7 +204,7 @@ function ProjectDetails() {
       {/* Scans List */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Scan History</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Scan History ({scans.length})</h2>
         </div>
         <div className="divide-y divide-gray-200">
           {scans.length === 0 ? (
@@ -196,10 +242,7 @@ function ProjectDetails() {
       >
         <ScanTriggerForm
           projectId={projectId}
-          onScanTriggered={() => {
-            setShowScanModal(false);
-            fetchScans();
-          }}
+          onScanTriggered={handleScanTriggered}
         />
       </Modal>
     </div>
