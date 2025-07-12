@@ -37,7 +37,7 @@ func NewDB(dataDir string) (*DB, error) {
 
 // initSchema creates the database tables if they don't exist
 func (db *DB) initSchema() error {
-	// Create projects table (matches the Project entity)
+	// Create projects table
 	_, err := db.conn.Exec(`
     CREATE TABLE IF NOT EXISTS projects (
         project_id TEXT PRIMARY KEY,
@@ -49,26 +49,43 @@ func (db *DB) initSchema() error {
 		return fmt.Errorf("failed to create projects table: %w", err)
 	}
 
-	// Create scans table (matches the Scan entity)
+	// Create project_scans table
 	_, err = db.conn.Exec(`
     CREATE TABLE IF NOT EXISTS project_scans (
         scan_id TEXT PRIMARY KEY,
         project_id TEXT NOT NULL,
+        project_project_id varchar(255),
         FOREIGN KEY(project_id) REFERENCES projects(project_id)
+    )`)
+	if err != nil {
+		return fmt.Errorf("failed to create project_scans table: %w", err)
+	}
+
+	// Create scans table
+	_, err = db.conn.Exec(`
+    CREATE TABLE IF NOT EXISTS scans (
+        scanId TEXT PRIMARY KEY,
+        source_directory TEXT NOT NULL,
+        filesProcessed INTEGER NOT NULL,
+        vulnerabilitiesFound INTEGER NOT NULL,
+        duration INTEGER NOT NULL,
+        timestamp TEXT NOT NULL
     )`)
 	if err != nil {
 		return fmt.Errorf("failed to create scans table: %w", err)
 	}
 
-	// Drop the unused tables that don't match your Java entities
-	_, err = db.conn.Exec(`DROP TABLE IF EXISTS scans`)
+	// Create directory_history table
+	_, err = db.conn.Exec(`
+    CREATE TABLE IF NOT EXISTS directory_history (
+        directory TEXT NOT NULL,
+        first_scan TEXT NOT NULL,
+        last_scan TEXT NOT NULL,
+        scan_count INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (directory)
+    )`)
 	if err != nil {
-		return fmt.Errorf("failed to drop old scans table: %w", err)
-	}
-
-	_, err = db.conn.Exec(`DROP TABLE IF EXISTS directory_history`)
-	if err != nil {
-		return fmt.Errorf("failed to drop directory_history table: %w", err)
+		return fmt.Errorf("failed to create directory_history table: %w", err)
 	}
 
 	return nil
