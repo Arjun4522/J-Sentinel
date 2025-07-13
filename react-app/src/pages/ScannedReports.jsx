@@ -35,7 +35,7 @@ const ScannedReports = () => {
 
   const fetchReports = async () => {
     try {
-      const res = await axios.get("/api/scans");
+      const res = await axios.get("/api/history/scans");
       const reportsData = res.data || [];
       setReports(reportsData);
       
