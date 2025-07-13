@@ -20,8 +20,8 @@ import {
 const api = axios.create({
   baseURL: "http://localhost:8080/api",
   auth: {
-    username: 'user',
-    password: 'secret'
+    username: "user",
+    password: "secret"
   }
 });
 
@@ -43,6 +43,9 @@ function ProjectDetails() {
       }
     };
     fetchData();
+
+    const intervalId = setInterval(fetchScans, 5000); // Poll every 5 seconds
+    return () => clearInterval(intervalId);
   }, [projectId]);
 
   const fetchProjectDetails = async () => {
@@ -58,6 +61,7 @@ function ProjectDetails() {
   const fetchScans = async () => {
     try {
       const res = await api.get(`/projects/${projectId}/scans`);
+      console.log("Scans response:", res.data); // Debug scan data
       setScans(res.data || []);
     } catch (error) {
       console.error("Failed to fetch scans:", error);
@@ -68,6 +72,11 @@ function ProjectDetails() {
   };
 
   const handleDeleteScan = async (scanId) => {
+    if (!scanId) {
+      console.error("No scanId provided for deletion");
+      setError("Cannot delete scan: Invalid scan ID");
+      return;
+    }
     if (window.confirm("Are you sure you want to delete this scan?")) {
       try {
         await api.delete(`/scans/${scanId}`);
@@ -79,23 +88,23 @@ function ProjectDetails() {
     }
   };
 
-  const handleScanTriggered = async () => {
-    setShowScanModal(false);
-    try {
-      await Promise.all([fetchProjectDetails(), fetchScans()]);
-    } catch (error) {
-      console.error("Failed to refresh after scan:", error);
-      setError("Failed to refresh data");
-    }
-  };
+const handleScanTriggered = async () => {
+  setShowScanModal(false);
+  try {
+    await Promise.all([fetchProjectDetails(), fetchScans()]);
+  } catch (error) {
+    console.error("Failed to refresh after scan:", error);
+    setError("Failed to refresh data");
+  }
+};
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'completed':
+      case "completed":
         return <CheckCircleIcon className="w-5 h-5 text-green-500" />;
-      case 'running':
+      case "running":
         return <ClockIcon className="w-5 h-5 text-blue-500" />;
-      case 'failed':
+      case "failed":
         return <ExclamationTriangleIcon className="w-5 h-5 text-red-500" />;
       default:
         return <ClockIcon className="w-5 h-5 text-gray-500" />;
@@ -104,14 +113,14 @@ function ProjectDetails() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'running':
-        return 'bg-blue-100 text-blue-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "running":
+        return "bg-blue-100 text-blue-800";
+      case "failed":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -127,8 +136,8 @@ function ProjectDetails() {
     return (
       <div className="p-4 bg-red-100 text-red-700 rounded-lg">
         {error}
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
         >
           Retry
@@ -150,9 +159,9 @@ function ProjectDetails() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {project?.name || 'Project Details'}
+              {project?.name || "Project Details"}
             </h1>
-            <p className="text-gray-600">{project?.description || 'No description'}</p>
+            <p className="text-gray-600">{project?.description || "No description"}</p>
           </div>
         </div>
         <button
@@ -183,7 +192,7 @@ function ProjectDetails() {
             <div>
               <p className="text-sm text-gray-600">Completed</p>
               <p className="text-2xl font-bold text-gray-900">
-                {scans.filter(s => s.status === 'completed').length}
+                {scans.filter((s) => s.status === "completed").length}
               </p>
             </div>
           </div>
@@ -207,30 +216,30 @@ function ProjectDetails() {
           <h2 className="text-lg font-semibold text-gray-900">Scan History ({scans.length})</h2>
         </div>
         <div className="divide-y divide-gray-200">
-  {scans.length === 0 ? (
-    <div className="p-12 text-center">
-      <DocumentTextIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-      <h3 className="text-lg font-medium text-gray-900 mb-2">No scans yet</h3>
-      <p className="text-gray-600 mb-4">Start your first security scan for this project</p>
-      <button
-        onClick={() => setShowScanModal(true)}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        Start Scan
-      </button>
-    </div>
-  ) : (
-    scans.map((scan) => (
-      <ScanItem
-        key={scan.scanId}  // Added here
-        scan={scan}
-        onDelete={handleDeleteScan}
-        getStatusIcon={getStatusIcon}
-        getStatusColor={getStatusColor}
-      />
-    ))
-  )}
-</div>
+          {scans.length === 0 ? (
+            <div className="p-12 text-center">
+              <DocumentTextIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No scans yet</h3>
+              <p className="text-gray-600 mb-4">Start your first security scan for this project</p>
+              <button
+                onClick={() => setShowScanModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Start Scan
+              </button>
+            </div>
+          ) : (
+            scans.map((scan) => (
+              <ScanItem
+                key={scan.scanId}
+                scan={scan}
+                onDelete={handleDeleteScan}
+                getStatusIcon={getStatusIcon}
+                getStatusColor={getStatusColor}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       {/* Scan Modal */}
@@ -240,10 +249,7 @@ function ProjectDetails() {
         title="Start New Scan"
         size="md"
       >
-        <ScanTriggerForm
-          projectId={projectId}
-          onScanTriggered={handleScanTriggered}
-        />
+        <ScanTriggerForm projectId={projectId} onScanTriggered={handleScanTriggered} />
       </Modal>
     </div>
   );
@@ -256,27 +262,29 @@ const ScanItem = ({ scan, onDelete, getStatusIcon, getStatusColor }) => {
         <div className="flex items-center space-x-4">
           {getStatusIcon(scan.status)}
           <div>
-            <h3 className="font-medium text-gray-900">
-              Scan #{scan.scanId}
-            </h3>
+            <h3 className="font-medium text-gray-900">Scan ID: {scan.scanId || "Unknown"}</h3>
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               <span className="flex items-center">
                 <CalendarIcon className="w-4 h-4 mr-1" />
                 {new Date(scan.createdAt || Date.now()).toLocaleDateString()}
               </span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(scan.status)}`}>
-                {scan.status || 'pending'}
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(scan.status)}`}
+              >
+                {scan.status || "pending"}
               </span>
             </div>
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Link
-            to={`/reports?scanId=${scan.scanId}`}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-          >
-            View Report
-          </Link>
+          {scan.status === "completed" && (
+            <Link
+              to={`/reports?scanId=${scan.scanId}`}
+              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            >
+              View Report
+            </Link>
+          )}
           <button
             onClick={() => onDelete(scan.scanId)}
             className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"

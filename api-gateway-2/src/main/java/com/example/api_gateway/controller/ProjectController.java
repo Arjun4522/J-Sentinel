@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.api_gateway.dto.ProjectDTO;
 import com.example.api_gateway.model.Project;
+import com.example.api_gateway.model.Scan;
 import com.example.api_gateway.service.ProjectService;
 
 @RestController
@@ -29,15 +30,15 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}/scans")
-    public List<String> getProjectScans(@PathVariable String projectId) {
-        return projectService.getProjectScanIds(projectId);
+    public List<Scan> getProjectScans(@PathVariable String projectId) {
+        return projectService.getProjectScans(projectId);
     }
 
-    @PostMapping("/{projectId}/scan")
+    /*@PostMapping("/{projectId}/scan")
     public Map<String, String> createScan(@PathVariable String projectId) {
         String scanId = projectService.createScanForProject(projectId);
         return Map.of("scanId", scanId);
-    }
+    }*/
 
     @GetMapping
     public List<ProjectDTO> getAllProjects() {
@@ -48,5 +49,4 @@ public class ProjectController {
     public void deleteProject(@PathVariable String projectId) {
         projectService.deleteProject(projectId);
     }
-
 }

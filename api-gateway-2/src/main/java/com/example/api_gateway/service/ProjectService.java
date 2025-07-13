@@ -73,6 +73,10 @@ public class ProjectService {
                 .toList();
     }
 
+    public List<Scan> getProjectScans(String projectId) {
+        return scanRepository.findByProject_ProjectId(projectId);
+    }
+
     public void deleteProject(String projectId) {
         if (!projectRepository.existsById(projectId)) {
             throw new RuntimeException("Project not found");
@@ -90,6 +94,7 @@ public class ProjectService {
         Project project = getProjectById(projectId);
         return project.getScanCount();
     }
+
     public void saveProject(Project project) {
         projectRepository.save(project);
     }
