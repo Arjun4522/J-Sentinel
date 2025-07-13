@@ -207,30 +207,30 @@ function ProjectDetails() {
           <h2 className="text-lg font-semibold text-gray-900">Scan History ({scans.length})</h2>
         </div>
         <div className="divide-y divide-gray-200">
-          {scans.length === 0 ? (
-            <div className="p-12 text-center">
-              <DocumentTextIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No scans yet</h3>
-              <p className="text-gray-600 mb-4">Start your first security scan for this project</p>
-              <button
-                onClick={() => setShowScanModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Start Scan
-              </button>
-            </div>
-          ) : (
-            scans.map((scan) => (
-              <ScanItem
-                key={scan.scanId}
-                scan={scan}
-                onDelete={handleDeleteScan}
-                getStatusIcon={getStatusIcon}
-                getStatusColor={getStatusColor}
-              />
-            ))
-          )}
-        </div>
+  {scans.length === 0 ? (
+    <div className="p-12 text-center">
+      <DocumentTextIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No scans yet</h3>
+      <p className="text-gray-600 mb-4">Start your first security scan for this project</p>
+      <button
+        onClick={() => setShowScanModal(true)}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        Start Scan
+      </button>
+    </div>
+  ) : (
+    scans.map((scan) => (
+      <ScanItem
+        key={scan.scanId}  // Added here
+        scan={scan}
+        onDelete={handleDeleteScan}
+        getStatusIcon={getStatusIcon}
+        getStatusColor={getStatusColor}
+      />
+    ))
+  )}
+</div>
       </div>
 
       {/* Scan Modal */}

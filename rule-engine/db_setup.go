@@ -52,7 +52,7 @@ func (db *DB) initSchema() error {
 	// Create project_scans table
 	_, err = db.conn.Exec(`
     CREATE TABLE IF NOT EXISTS project_scans (
-        scan_id TEXT PRIMARY KEY,
+        scanId TEXT PRIMARY KEY,
         project_id TEXT NOT NULL,
         project_project_id varchar(255),
         FOREIGN KEY(project_id) REFERENCES projects(project_id)
